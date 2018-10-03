@@ -193,7 +193,14 @@ namespace Timetabling.Common.ProblemModel
 
         public readonly Variable[] AllClassVariables;
 
+        public readonly CourseVariable[] EnrollmentVariables;
+
         public readonly Solution InitialSolution;
+
+        private CourseVariable[] GetCourseVariables()
+        {
+
+        }
 
         private (Variable[] timeVariables, Variable[] roomVariables) GetClassVariables()
         {
@@ -214,6 +221,8 @@ namespace Timetabling.Common.ProblemModel
 
             return (timeVariables.ToArray(), roomVariables.ToArray());
         }
+
+
 
         private Solution CreateInitialSolution()
         {
@@ -264,7 +273,8 @@ namespace Timetabling.Common.ProblemModel
 
                         foreach (var (prevSchedule, prevRoom) in classesSoFar)
                         {
-                            if (schedule.Overlaps(prevSchedule, TravelTimes[room, prevRoom]))
+                            var travelTime = room >= 0 && prevRoom >= 0 ? TravelTimes[room, prevRoom] : 0;
+                            if (schedule.Overlaps(prevSchedule, travelTime))
                             {
                                 conflicts++;
                             }

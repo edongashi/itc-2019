@@ -126,7 +126,7 @@ namespace Timetabling.Common.SolutionModel
 
                 var cData = classes[c];
                 var cState = classStates[c];
-                if (cState.Room == -1 || cData.PossibleRooms[cState.Room].Id != oldRoomId)
+                if (cData.PossibleRooms[cState.Room].Id != oldRoomId)
                 {
                     continue;
                 }
@@ -151,7 +151,7 @@ namespace Timetabling.Common.SolutionModel
 
                 var cData = classes[c];
                 var cState = classStates[c];
-                if (cState.Room == -1 || cData.PossibleRooms[cState.Room].Id != newRoomId)
+                if (cData.PossibleRooms[cState.Room].Id != newRoomId)
                 {
                     continue;
                 }
@@ -224,13 +224,27 @@ namespace Timetabling.Common.SolutionModel
 
                         var classState = classStates[classId];
                         var cSchedule = classObject.PossibleSchedules[classState.Time];
-                        var cRoomId = classObject.PossibleRooms[classState.Room].Id;
-                        if (schedule.Overlaps(cSchedule, travelTimes[cRoomId, oldRoomId]))
+                        var cRoom = classState.Room;
+                        int travelTimeOld;
+                        int travelTimeNew;
+                        if (cRoom < 0)
+                        {
+                            travelTimeOld = 0;
+                            travelTimeNew = 0;
+                        }
+                        else
+                        {
+                            var cRoomId = classObject.PossibleRooms[cRoom].Id;
+                            travelTimeOld = travelTimes[cRoomId, oldRoomId];
+                            travelTimeNew = travelTimes[cRoomId, newRoomId];
+                        }
+
+                        if (schedule.Overlaps(cSchedule, travelTimeOld))
                         {
                             conflictingPairs--;
                         }
 
-                        if (schedule.Overlaps(cSchedule, travelTimes[cRoomId, newRoomId]))
+                        if (schedule.Overlaps(cSchedule, travelTimeNew))
                         {
                             conflictingPairs++;
                         }
@@ -317,56 +331,60 @@ namespace Timetabling.Common.SolutionModel
 
             // Eval room availability at new time
             var roomUnavailablePenalty = 0d;
-            var room = Problem.Rooms[classData.PossibleRooms[state.Room].Id];
-            var unavailableSchedules = room.UnavailableSchedules;
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (var i = 0; i < unavailableSchedules.Length; i++)
+            var roomId = -1;
+            if (state.Room >= 0)
             {
-                var unavailableSchedule = unavailableSchedules[i];
-                if (newSchedule.Overlaps(unavailableSchedule))
+                roomId = classData.PossibleRooms[state.Room].Id;
+                var room = Problem.Rooms[roomId];
+                var unavailableSchedules = room.UnavailableSchedules;
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                // ReSharper disable once ForCanBeConvertedToForeach
+                for (var i = 0; i < unavailableSchedules.Length; i++)
                 {
-                    roomUnavailablePenalty = 1d;
-                    break;
+                    var unavailableSchedule = unavailableSchedules[i];
+                    if (newSchedule.Overlaps(unavailableSchedule))
+                    {
+                        roomUnavailablePenalty = 1d;
+                        break;
+                    }
                 }
+
+                hardPenalty += roomUnavailablePenalty;
+
+                // Cleanup clashes in previous room
+                // Eval clashes with other classes
+                var classConflicts = 0;
+                var possibleClasses = room.PossibleClasses;
+                // ReSharper disable once ForCanBeConvertedToForeach
+                for (var i = 0; i < possibleClasses.Length; i++)
+                {
+                    var c = possibleClasses[i];
+                    if (c == @class)
+                    {
+                        continue;
+                    }
+
+                    var cData = classes[c];
+                    var cState = classStates[c];
+                    if (cData.PossibleRooms[cState.Room].Id != roomId)
+                    {
+                        continue;
+                    }
+
+                    var cTime = cData.PossibleSchedules[cState.Time];
+                    if (oldSchedule.Overlaps(cTime))
+                    {
+                        classConflicts--;
+                    }
+
+                    if (newSchedule.Overlaps(cTime))
+                    {
+                        classConflicts++;
+                    }
+                }
+
+                hardPenalty += classConflicts;
             }
-
-            hardPenalty += roomUnavailablePenalty;
-
-            // Cleanup clashes in previous room
-            // Eval clashes with other classes
-            var classConflicts = 0;
-            var possibleClasses = room.PossibleClasses;
-            var roomId = room.Id;
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (var i = 0; i < possibleClasses.Length; i++)
-            {
-                var c = possibleClasses[i];
-                if (c == @class)
-                {
-                    continue;
-                }
-
-                var cData = classes[c];
-                var cState = classStates[c];
-                if (cState.Room == -1 || cData.PossibleRooms[cState.Room].Id != roomId)
-                {
-                    continue;
-                }
-
-                var cTime = cData.PossibleSchedules[cState.Time];
-                if (oldSchedule.Overlaps(cTime))
-                {
-                    classConflicts--;
-                }
-
-                if (newSchedule.Overlaps(cTime))
-                {
-                    classConflicts++;
-                }
-            }
-
-            hardPenalty += classConflicts;
 
             // Eval students of C
             var studentOverrides = new List<Override<StudentState>>();
@@ -428,7 +446,17 @@ namespace Timetabling.Common.SolutionModel
 
                         var classState = classStates[classId];
                         var cSchedule = classObject.PossibleSchedules[classState.Time];
-                        var travelTime = travelTimes[roomId, classObject.PossibleRooms[classState.Room].Id];
+                        var cRoom = classState.Room;
+                        int travelTime;
+                        if (cRoom < 0 || roomId < 0)
+                        {
+                            travelTime = 0;
+                        }
+                        else
+                        {
+                            travelTime = travelTimes[roomId, classObject.PossibleRooms[cRoom].Id];
+                        }
+
                         if (oldSchedule.Overlaps(cSchedule, travelTime))
                         {
                             conflictingPairs--;
