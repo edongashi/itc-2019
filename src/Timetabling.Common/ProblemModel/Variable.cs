@@ -31,16 +31,16 @@
         public readonly int[][] Values;
     }
 
-    public struct CourseConfiguration
-    {
-        public CourseConfiguration(int courseIndex, int[] variables)
-        {
-            CourseIndex = courseIndex;
-            Variables = variables;
-        }
+    //public struct CourseConfiguration
+    //{
+    //    public CourseConfiguration(int courseIndex, int[] variables)
+    //    {
+    //        CourseIndex = courseIndex;
+    //        Variables = variables;
+    //    }
 
-        public readonly int CourseIndex;
+    //    public readonly int CourseIndex;
 
-        public readonly int[] Variables;
-    }
+    //    public readonly int[] Variables;
+    //}
 }
