@@ -27,13 +27,10 @@ namespace Timetabling.Common.ProblemModel
         {
             EnrollmentConfigurations = enrollmentConfigurations;
             var enumerated = availableClasses as List<ClassData> ?? availableClasses?.ToList() ?? new List<ClassData>();
-            AvailableClasses = enumerated.Select(c => c.Id).ToArray();
             LooseClasses = enumerated.Where(c => c.Children.Count == 0).Select(c => c.Id).ToArray();
         }
 
         public readonly Dictionary<int, EnrollmentConfiguration> EnrollmentConfigurations;
-
-        public readonly int[] AvailableClasses;
 
         public readonly int[] LooseClasses;
     }

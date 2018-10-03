@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel
@@ -149,6 +151,8 @@ namespace Timetabling.Common.ProblemModel
 
                 Students[i] = new StudentData(student.Id, student.Courses, enrollmentConfig, classes);
             }
+
+            InitialSolution = CreateInitialSolution();
         }
 
         public readonly string Name;
@@ -178,5 +182,159 @@ namespace Timetabling.Common.ProblemModel
         public readonly int[,] TravelTimes;
 
         public readonly IConstraint[] Constraints;
+
+        public readonly Solution InitialSolution;
+
+        private Solution CreateInitialSolution()
+        {
+            const int chunkSize = 256;
+            var hardPenalty = 0d;
+            var softPenalty = 0;
+            var classStates = new ClassState[Classes.Length];
+            var studentStates = new StudentState[Students.Length];
+            for (var i = 0; i < classStates.Length; i++)
+            {
+                var classData = Classes[i];
+                classStates[i] = new ClassState(
+                    classData.PossibleRooms.Length > 0 ? 0 : -1,
+                    classData.PossibleSchedules.Length > 0 ? 0 : throw new InvalidOperationException("Corrupt problem instance."),
+                    0, 0d, 0, 0d, 0, 0d, 0, 0d, 0d, 0d);
+            }
+
+            for (var i = 0; i < studentStates.Length; i++)
+            {
+                var studentData = Students[i];
+                var enrollmentStates = new List<EnrollmentState>();
+                var classesSoFar = new List<(Schedule schedule, int room)>();
+                var conflicts = 0;
+                foreach (var courseId in studentData.Courses)
+                {
+                    var course = Courses[courseId];
+                    if (course.BaselineConfiguration == -1)
+                    {
+                        throw new InvalidOperationException("Corrupt problem instance.");
+                    }
+
+                    var enrollmentState = new EnrollmentState(course.BaselineConfiguration, course.Baseline);
+                    enrollmentStates.Add(enrollmentState);
+
+                    var enrolledSubparts = enrollmentState.Subparts;
+                    var config = course.Configurations[course.BaselineConfiguration];
+                    for (var j = 0; j < enrolledSubparts.Length; j++)
+                    {
+                        var subpart = config.Subparts[j];
+                        var classIndex = enrolledSubparts[j];
+                        var classObject = subpart.Classes[classIndex];
+                        var classData = Classes[classObject.Id];
+                        var classState = classStates[classObject.Id];
+                        classStates[classObject.Id] = classState = classState
+                            .WithAttendees(classState.Attendees + 1, 0d, 0d);
+                        var schedule = classData.PossibleSchedules[classState.Time];
+                        var room = classData.PossibleRooms[classState.Room].Id;
+
+                        foreach (var (prevSchedule, prevRoom) in classesSoFar)
+                        {
+                            if (schedule.Overlaps(prevSchedule, TravelTimes[room, prevRoom]))
+                            {
+                                conflicts++;
+                            }
+                        }
+
+                        classesSoFar.Add((schedule, room));
+                    }
+                }
+
+                softPenalty += conflicts * StudentPenalty;
+                studentStates[i] = new StudentState(enrollmentStates.ToArray(), conflicts);
+            }
+
+            var partialSolution = new Solution(
+                this,
+                hardPenalty,
+                softPenalty,
+                new ChunkedArray<ClassState>(classStates, chunkSize),
+                new ChunkedArray<StudentState>(studentStates, chunkSize));
+
+            var classConflicts = 0;
+            for (var i = 0; i < classStates.Length; i++)
+            {
+                var state = classStates[i];
+                var classData = Classes[i];
+                var schedule = classData.PossibleSchedules[state.Time];
+                var roomId = classData.PossibleRooms[state.Room].Id;
+                var room = Rooms[roomId];
+                var roomCapacityPenalty = state.Attendees > room.Capacity
+                    ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) * Solution.CapacityOverflowRate
+                    : 0d;
+                var classCapacityPenalty = state.Attendees > classData.Capacity
+                    ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) * Solution.CapacityOverflowRate
+                    : 0d;
+
+                hardPenalty += roomCapacityPenalty;
+                hardPenalty += classCapacityPenalty;
+
+                var roomUnavailablePenalty = 0d;
+                foreach (var unavailableSchedule in room.UnavailableSchedules)
+                {
+                    if (schedule.Overlaps(unavailableSchedule))
+                    {
+                        roomUnavailablePenalty = 1d;
+                        break;
+                    }
+                }
+
+                hardPenalty += roomUnavailablePenalty;
+
+                var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(this, partialSolution);
+                var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(this, partialSolution);
+                var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(this, partialSolution);
+                hardPenalty += commonHardPenalty;
+                hardPenalty += roomHardPenalty;
+                hardPenalty += timeHardPenalty;
+                softPenalty += commonSoftPenalty;
+                softPenalty += roomSoftPenalty;
+                softPenalty += timeSoftPenalty;
+
+                for (var j = 0; j < i; j++)
+                {
+                    var otherClassState = classStates[j];
+                    var otherClassData = Classes[j];
+                    var otherRoomId = otherClassData.PossibleRooms[otherClassState.Room].Id;
+                    if (roomId != otherRoomId)
+                    {
+                        continue;
+                    }
+
+                    var otherSchedule = otherClassData.PossibleSchedules[otherClassState.Time];
+                    if (schedule.Overlaps(otherSchedule))
+                    {
+                        classConflicts++;
+                    }
+                }
+
+                classStates[i] = new ClassState(
+                    state.Room,
+                    state.Time,
+                    state.Attendees,
+                    timeHardPenalty,
+                    timeSoftPenalty,
+                    commonHardPenalty,
+                    commonSoftPenalty,
+                    roomHardPenalty,
+                    roomSoftPenalty,
+                    classCapacityPenalty,
+                    roomCapacityPenalty,
+                    roomUnavailablePenalty);
+            }
+
+            hardPenalty += classConflicts;
+
+            return new Solution(
+                this,
+                hardPenalty,
+                softPenalty,
+                new ChunkedArray<ClassState>(classStates, chunkSize),
+                new ChunkedArray<StudentState>(studentStates, chunkSize));
+        }
     }
 }

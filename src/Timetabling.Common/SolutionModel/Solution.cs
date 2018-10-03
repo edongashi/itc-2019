@@ -7,10 +7,10 @@ namespace Timetabling.Common.SolutionModel
 {
     public class Solution
     {
-        private const double CapacityOverflowBase = 0.9d;
-        private const double CapacityOverflowRate = 0.1d;
+        internal const double CapacityOverflowBase = 0.9d;
+        internal const double CapacityOverflowRate = 0.1d;
 
-        public Solution(
+        internal Solution(
             Problem problem,
             double hardPenalty,
             int softPenalty,
