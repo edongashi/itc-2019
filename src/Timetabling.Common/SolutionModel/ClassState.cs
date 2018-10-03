@@ -53,5 +53,22 @@
         public readonly double RoomCapacityPenalty;
 
         public readonly double RoomUnavailablePenalty;
+
+        public ClassState WithAttendees(int attendees, double classCapacityPenalty, double roomCapacityPenalty)
+        {
+            return new ClassState(
+                Room,
+                Time,
+                attendees,
+                TimeHardPenalty,
+                TimeSoftPenalty,
+                CommonHardPenalty,
+                CommonSoftPenalty,
+                RoomHardPenalty,
+                RoomSoftPenalty,
+                classCapacityPenalty,
+                roomCapacityPenalty,
+                RoomUnavailablePenalty);
+        }
     }
 }
