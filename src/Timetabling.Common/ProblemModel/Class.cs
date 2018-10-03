@@ -7,46 +7,63 @@ namespace Timetabling.Common.ProblemModel
     {
         public Class(
             int id,
+            int parentId,
             int courseId,
+            int capacity,
             RoomAssignment[] possibleRooms,
             ScheduleAssignment[] possibleSchedules)
         {
             Id = id;
+            ParentId = parentId;
             CourseId = courseId;
+            Capacity = capacity;
             PossibleRooms = possibleRooms;
             PossibleSchedules = possibleSchedules;
         }
 
-        public int Id { get; }
+        public readonly int Id;
 
-        public int CourseId { get; }
+        public readonly int ParentId;
 
-        public RoomAssignment[] PossibleRooms { get; }
+        public readonly int CourseId;
 
-        public ScheduleAssignment[] PossibleSchedules { get; }
+        public readonly int Capacity;
+
+        public readonly RoomAssignment[] PossibleRooms;
+
+        public readonly ScheduleAssignment[] PossibleSchedules;
     }
 
     public class ClassData : Class
     {
         public ClassData(
             int id,
+            int parentId,
             int courseId,
+            int capacity,
             RoomAssignment[] possibleRooms,
             ScheduleAssignment[] possibleSchedules,
             IEnumerable<IConstraint> commonConstraints,
             IEnumerable<IConstraint> timeConstraints,
-            IEnumerable<IConstraint> roomConstraints)
-            : base(id, courseId, possibleRooms, possibleSchedules)
+            IEnumerable<IConstraint> roomConstraints,
+            IEnumerable<int> children)
+            : base(id, parentId, courseId, capacity, possibleRooms, possibleSchedules)
         {
             CommonConstraints = commonConstraints.ToArray();
             TimeConstraints = timeConstraints.ToArray();
             RoomConstraints = roomConstraints.ToArray();
+            Children = new HashSet<int>(children ?? Enumerable.Empty<int>());
+            HasChildren = Children.Count > 0;
         }
 
-        public IConstraint[] CommonConstraints { get; }
+        public readonly IConstraint[] CommonConstraints;
 
-        public IConstraint[] TimeConstraints { get; }
+        public readonly IConstraint[] TimeConstraints;
 
-        public IConstraint[] RoomConstraints { get; }
+        public readonly IConstraint[] RoomConstraints;
+
+        public readonly HashSet<int> Children;
+
+        public readonly bool HasChildren;
     }
 }

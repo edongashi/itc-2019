@@ -8,8 +8,8 @@
             Penalty = penalty;
         }
 
-        public int Id { get; }
+        public readonly int Id;
 
-        public int Penalty { get; }
+        public readonly int Penalty;
     }
 }

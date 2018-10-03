@@ -10,12 +10,12 @@
             TravelTimes = travelTimes;
         }
 
-        public int Id { get; }
+        public readonly int Id ;
 
-        public int Capacity { get; }
+        public readonly int Capacity ;
 
-        public Schedule[] UnavailableSchedules { get; }
+        public readonly Schedule[] UnavailableSchedules ;
 
-        public TravelTime[] TravelTimes { get; }
+        public readonly TravelTime[] TravelTimes ;
     }
 }

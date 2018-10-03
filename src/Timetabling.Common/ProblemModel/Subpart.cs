@@ -9,10 +9,10 @@
             Classes = classes;
         }
 
-        public int Id { get; }
+        public readonly int Id;
 
-        public int CourseId { get; }
+        public readonly int CourseId;
 
-        public Class[] Classes { get; }
+        public readonly Class[] Classes;
     }
 }

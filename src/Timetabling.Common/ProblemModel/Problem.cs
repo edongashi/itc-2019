@@ -42,7 +42,8 @@ namespace Timetabling.Common.ProblemModel
             Constraints = constraints;
 
             var roomClasses = new List<int>[rooms.Length];
-            Classes = courses.SelectMany(c => c.Classes)
+            var rawClasses = courses.SelectMany(c => c.Classes).ToList();
+            Classes = rawClasses
                 .Select(c =>
                 {
                     var classConstraints = constraints
@@ -50,12 +51,15 @@ namespace Timetabling.Common.ProblemModel
                         .ToList();
                     return new ClassData(
                         c.Id,
+                        c.ParentId,
                         c.CourseId,
+                        c.Capacity,
                         c.PossibleRooms,
                         c.PossibleSchedules,
                         classConstraints.Where(constraint => constraint.Type == ConstraintType.Common),
                         classConstraints.Where(constraint => constraint.Type == ConstraintType.Time),
-                        classConstraints.Where(constraint => constraint.Type == ConstraintType.Room));
+                        classConstraints.Where(constraint => constraint.Type == ConstraintType.Room),
+                        rawClasses.Where(rc => rc.ParentId == c.Id).Select(rc => rc.Id));
                 })
                 .ToArray();
 
@@ -117,6 +121,7 @@ namespace Timetabling.Common.ProblemModel
             {
                 var student = students[i];
                 var enrollmentConfig = new Dictionary<int, EnrollmentConfiguration>();
+                var classes = new List<ClassData>();
                 for (var courseIndex = 0; courseIndex < student.Courses.Length; courseIndex++)
                 {
                     var courseId = student.Courses[courseIndex];
@@ -130,42 +135,48 @@ namespace Timetabling.Common.ProblemModel
                             for (var classIndex = 0; classIndex < subpartObject.Classes.Length; classIndex++)
                             {
                                 var classObject = subpartObject.Classes[classIndex];
-                                enrollmentConfig[classObject.Id] = new EnrollmentConfiguration(courseIndex, configIndex, subpartIndex, classIndex);
+                                var classData = Classes[classObject.Id];
+                                if (classData.Capacity > 0)
+                                {
+                                    classes.Add(classData);
+                                }
+
+                                enrollmentConfig[classData.Id] = new EnrollmentConfiguration(courseIndex, configIndex, subpartIndex, classIndex);
                             }
                         }
                     }
                 }
 
-                Students[i] = new StudentData(student.Id, student.Courses, enrollmentConfig);
+                Students[i] = new StudentData(student.Id, student.Courses, enrollmentConfig, classes);
             }
         }
 
-        public string Name { get; }
+        public readonly string Name;
 
-        public int NumberOfWeeks { get; }
+        public readonly int NumberOfWeeks;
 
-        public int DaysPerWeek { get; }
+        public readonly int DaysPerWeek;
 
-        public int SlotsPerDay { get; }
+        public readonly int SlotsPerDay;
 
-        public int TimePenalty { get; }
+        public readonly int TimePenalty;
 
-        public int RoomPenalty { get; }
+        public readonly int RoomPenalty;
 
-        public int DistributionPenalty { get; }
+        public readonly int DistributionPenalty;
 
-        public int StudentPenalty { get; }
+        public readonly int StudentPenalty;
 
-        public RoomData[] Rooms { get; }
+        public readonly RoomData[] Rooms;
 
-        public CourseData[] Courses { get; }
+        public readonly CourseData[] Courses;
 
-        public ClassData[] Classes { get; }
+        public readonly ClassData[] Classes;
 
-        public StudentData[] Students { get; }
+        public readonly StudentData[] Students;
 
-        public int[,] TravelTimes { get; }
+        public readonly int[,] TravelTimes;
 
-        public IConstraint[] Constraints { get; }
+        public readonly IConstraint[] Constraints;
     }
 }

@@ -13,6 +13,6 @@
             PossibleClasses = possibleClasses;
         }
 
-        public int[] PossibleClasses { get; }
+        public readonly int[] PossibleClasses;
     }
 }

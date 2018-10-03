@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Timetabling.Common.ProblemModel
 {
@@ -10,20 +11,31 @@ namespace Timetabling.Common.ProblemModel
             Courses = courses;
         }
 
-        public int Id { get; }
+        public readonly int Id;
 
-        public int[] Courses { get; }
+        public readonly int[] Courses;
     }
 
     public class StudentData : Student
     {
-        public StudentData(int id, int[] courses, Dictionary<int, EnrollmentConfiguration> enrollmentConfigurations)
+        public StudentData(
+            int id,
+            int[] courses,
+            Dictionary<int, EnrollmentConfiguration> enrollmentConfigurations,
+            IEnumerable<ClassData> availableClasses)
             : base(id, courses)
         {
             EnrollmentConfigurations = enrollmentConfigurations;
+            var enumerated = availableClasses as List<ClassData> ?? availableClasses?.ToList() ?? new List<ClassData>();
+            AvailableClasses = enumerated.Select(c => c.Id).ToArray();
+            LooseClasses = enumerated.Where(c => c.Children.Count == 0).Select(c => c.Id).ToArray();
         }
 
-        public Dictionary<int, EnrollmentConfiguration> EnrollmentConfigurations { get; }
+        public readonly Dictionary<int, EnrollmentConfiguration> EnrollmentConfigurations;
+
+        public readonly int[] AvailableClasses;
+
+        public readonly int[] LooseClasses;
     }
 
     public struct EnrollmentConfiguration
@@ -36,12 +48,12 @@ namespace Timetabling.Common.ProblemModel
             ClassIndex = classIndex;
         }
 
-        public int CourseIndex { get; }
+        public readonly int CourseIndex;
 
-        public int ConfigIndex { get; }
+        public readonly int ConfigIndex;
 
-        public int SubpartIndex { get; }
+        public readonly int SubpartIndex;
 
-        public int ClassIndex { get; }
+        public readonly int ClassIndex;
     }
 }

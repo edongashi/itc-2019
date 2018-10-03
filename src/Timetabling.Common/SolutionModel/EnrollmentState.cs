@@ -2,14 +2,14 @@
 {
     public class EnrollmentState
     {
-        public EnrollmentState(int configIndex, int[] classes)
+        public EnrollmentState(int configIndex, int[] subparts)
         {
             ConfigIndex = configIndex;
-            Classes = classes;
+            Subparts = subparts;
         }
 
         public readonly int ConfigIndex;
 
-        public readonly int[] Classes;
+        public readonly int[] Subparts;
     }
 }

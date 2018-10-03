@@ -11,9 +11,9 @@ namespace Timetabling.Common.ProblemModel
             Configurations = configurations;
         }
 
-        public int Id { get; }
+        public readonly int Id;
 
-        public CourseConfiguration[] Configurations { get; }
+        public readonly CourseConfiguration[] Configurations;
 
         public IEnumerable<Class> Classes => Configurations.SelectMany(c => c.Classes);
     }

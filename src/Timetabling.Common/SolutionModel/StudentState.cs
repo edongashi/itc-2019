@@ -21,7 +21,7 @@
                     case 0:
                         return true;
                     case 1:
-                        return EnrollmentStates[0].Classes.Length <= 1;
+                        return EnrollmentStates[0].Subparts.Length <= 1;
                     default:
                         return false;
                 }

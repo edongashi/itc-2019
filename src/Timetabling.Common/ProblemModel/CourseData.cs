@@ -8,6 +8,6 @@
             PossibleStudents = possibleStudents;
         }
 
-        public int[] PossibleStudents { get; }
+        public readonly int[] PossibleStudents;
     }
 }

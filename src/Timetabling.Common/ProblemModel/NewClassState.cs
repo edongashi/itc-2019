@@ -9,10 +9,10 @@
             Time = time;
         }
 
-        public int Class { get; }
+        public readonly int Class;
 
-        public int Room { get; }
+        public readonly int Room;
 
-        public int Time { get; }
+        public readonly int Time;
     }
 }

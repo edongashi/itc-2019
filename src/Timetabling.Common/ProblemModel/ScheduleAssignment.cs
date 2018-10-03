@@ -15,6 +15,6 @@ namespace Timetabling.Common.ProblemModel
             Penalty = penalty;
         }
 
-        public int Penalty { get; }
+        public readonly int Penalty;
     }
 }

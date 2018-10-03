@@ -8,8 +8,8 @@
             Value = value;
         }
 
-        public int RoomId { get; }
+        public readonly int RoomId;
 
-        public int Value { get; }
+        public readonly int Value;
     }
 }

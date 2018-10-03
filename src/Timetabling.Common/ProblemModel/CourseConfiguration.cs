@@ -12,11 +12,13 @@ namespace Timetabling.Common.ProblemModel
             Subparts = subparts;
         }
 
-        public int Id { get; }
+        public readonly int Id;
 
-        public int CourseId { get; }
+        public readonly int CourseId;
 
-        public Subpart[] Subparts { get; }
+        public readonly Subpart[] Subparts;
+
+        public readonly int[] Baseline;
 
         public IEnumerable<Class> Classes => Subparts.SelectMany(s => s.Classes);
     }
