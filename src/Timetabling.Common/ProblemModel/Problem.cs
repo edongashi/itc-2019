@@ -152,6 +152,10 @@ namespace Timetabling.Common.ProblemModel
                 Students[i] = new StudentData(student.Id, student.Courses, enrollmentConfig, classes);
             }
 
+            var (timeVariables, roomVariables) = GetClassVariables();
+            TimeVariables = timeVariables;
+            RoomVariables = roomVariables;
+            AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
             InitialSolution = CreateInitialSolution();
         }
 
@@ -183,7 +187,33 @@ namespace Timetabling.Common.ProblemModel
 
         public readonly IConstraint[] Constraints;
 
+        public readonly Variable[] TimeVariables;
+
+        public readonly Variable[] RoomVariables;
+
+        public readonly Variable[] AllClassVariables;
+
         public readonly Solution InitialSolution;
+
+        private (Variable[] timeVariables, Variable[] roomVariables) GetClassVariables()
+        {
+            var timeVariables = new List<Variable>();
+            var roomVariables = new List<Variable>();
+            foreach (var classData in Classes)
+            {
+                if (classData.PossibleSchedules.Length > 1)
+                {
+                    timeVariables.Add(new Variable(classData.Id, classData.PossibleSchedules.Length));
+                }
+
+                if (classData.PossibleRooms.Length > 1)
+                {
+                    roomVariables.Add(new Variable(classData.Id, classData.PossibleRooms.Length));
+                }
+            }
+
+            return (timeVariables.ToArray(), roomVariables.ToArray());
+        }
 
         private Solution CreateInitialSolution()
         {
@@ -291,9 +321,9 @@ namespace Timetabling.Common.ProblemModel
                 hardPenalty += commonHardPenalty;
                 hardPenalty += roomHardPenalty;
                 hardPenalty += timeHardPenalty;
-                softPenalty += commonSoftPenalty;
-                softPenalty += roomSoftPenalty;
-                softPenalty += timeSoftPenalty;
+                softPenalty += DistributionPenalty * commonSoftPenalty;
+                softPenalty += DistributionPenalty * roomSoftPenalty;
+                softPenalty += DistributionPenalty * timeSoftPenalty;
 
                 for (var j = 0; j < i; j++)
                 {

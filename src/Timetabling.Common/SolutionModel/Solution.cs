@@ -112,7 +112,7 @@ namespace Timetabling.Common.SolutionModel
             hardPenalty += roomUnavailablePenalty;
 
             // Cleanup clashes in previous room
-            var clashesWithOtherClasses = 0;
+            var classConflicts = 0;
             var possibleClasses = oldRoom.PossibleClasses;
             var oldRoomId = oldRoom.Id;
             // ReSharper disable once ForCanBeConvertedToForeach
@@ -133,7 +133,7 @@ namespace Timetabling.Common.SolutionModel
 
                 if (schedule.Overlaps(cData.PossibleSchedules[cState.Time]))
                 {
-                    clashesWithOtherClasses--;
+                    classConflicts--;
                 }
             }
 
@@ -158,11 +158,11 @@ namespace Timetabling.Common.SolutionModel
 
                 if (schedule.Overlaps(cData.PossibleSchedules[cState.Time]))
                 {
-                    clashesWithOtherClasses++;
+                    classConflicts++;
                 }
             }
 
-            hardPenalty += clashesWithOtherClasses;
+            hardPenalty += classConflicts;
 
             // Eval students of C
             var studentOverrides = new List<Override<StudentState>>();
@@ -335,7 +335,7 @@ namespace Timetabling.Common.SolutionModel
 
             // Cleanup clashes in previous room
             // Eval clashes with other classes
-            var clashesWithOtherClasses = 0;
+            var classConflicts = 0;
             var possibleClasses = room.PossibleClasses;
             var roomId = room.Id;
             // ReSharper disable once ForCanBeConvertedToForeach
@@ -357,16 +357,16 @@ namespace Timetabling.Common.SolutionModel
                 var cTime = cData.PossibleSchedules[cState.Time];
                 if (oldSchedule.Overlaps(cTime))
                 {
-                    clashesWithOtherClasses--;
+                    classConflicts--;
                 }
 
                 if (newSchedule.Overlaps(cTime))
                 {
-                    clashesWithOtherClasses++;
+                    classConflicts++;
                 }
             }
 
-            hardPenalty += clashesWithOtherClasses;
+            hardPenalty += classConflicts;
 
             // Eval students of C
             var studentOverrides = new List<Override<StudentState>>();
