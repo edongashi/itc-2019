@@ -42,7 +42,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                 }
             }
 
-            return Required ? (penalty, 0) : (0, penalty);
+            return Required ? (penalty, 0) : (0, Penalty * penalty);
         }
     }
 }
