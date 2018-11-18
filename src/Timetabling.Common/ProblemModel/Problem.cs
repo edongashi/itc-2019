@@ -365,29 +365,38 @@ namespace Timetabling.Common.ProblemModel
                 var state = classStates[i];
                 var classData = Classes[i];
                 var schedule = classData.PossibleSchedules[state.Time];
-                var roomId = classData.PossibleRooms[state.Room].Id;
-                var room = Rooms[roomId];
-                var roomCapacityPenalty = state.Attendees > room.Capacity
-                    ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) * Solution.CapacityOverflowRate
-                    : 0d;
-                var classCapacityPenalty = state.Attendees > classData.Capacity
-                    ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) * Solution.CapacityOverflowRate
-                    : 0d;
 
-                hardPenalty += roomCapacityPenalty;
-                hardPenalty += classCapacityPenalty;
-
+                var roomId = -1;
+                var roomCapacityPenalty = 0d;
+                var classCapacityPenalty = 0d;
                 var roomUnavailablePenalty = 0d;
-                foreach (var unavailableSchedule in room.UnavailableSchedules)
+                if (state.Room >= 0)
                 {
-                    if (schedule.Overlaps(unavailableSchedule))
+                    roomId = classData.PossibleRooms[state.Room].Id;
+                    var room = Rooms[roomId];
+                    roomCapacityPenalty = state.Attendees > room.Capacity
+                        ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) * Solution.CapacityOverflowRate
+                        : 0d;
+                    classCapacityPenalty = state.Attendees > classData.Capacity
+                        ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) * Solution.CapacityOverflowRate
+                        : 0d;
+
+                    hardPenalty += roomCapacityPenalty;
+                    hardPenalty += classCapacityPenalty;
+
+                    roomUnavailablePenalty = 0d;
+                    foreach (var unavailableSchedule in room.UnavailableSchedules)
                     {
-                        roomUnavailablePenalty = 1d;
-                        break;
+                        if (schedule.Overlaps(unavailableSchedule))
+                        {
+                            roomUnavailablePenalty = 1d;
+                            break;
+                        }
                     }
+
+                    hardPenalty += roomUnavailablePenalty;
                 }
 
-                hardPenalty += roomUnavailablePenalty;
 
                 var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(partialSolution);
                 var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(partialSolution);
@@ -403,6 +412,11 @@ namespace Timetabling.Common.ProblemModel
                 {
                     var otherClassState = classStates[j];
                     var otherClassData = Classes[j];
+                    if (otherClassState.Room < 0)
+                    {
+                        continue;
+                    }
+
                     var otherRoomId = otherClassData.PossibleRooms[otherClassState.Room].Id;
                     if (roomId != otherRoomId)
                     {

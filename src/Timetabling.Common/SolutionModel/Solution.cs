@@ -68,6 +68,11 @@ namespace Timetabling.Common.SolutionModel
             {
                 if (classOverride.Class == @class)
                 {
+                    if (classOverride.Room < 0)
+                    {
+                        return null;
+                    }
+
                     return inner.Problem.Rooms[inner.Problem.Classes[@class].PossibleRooms[classOverride.Room].Id];
                 }
 
@@ -119,7 +124,13 @@ namespace Timetabling.Common.SolutionModel
 
         public Room GetRoom(int @class)
         {
-            return Problem.Rooms[Problem.Classes[@class].PossibleRooms[classStates[@class].Room].Id];
+            var state = classStates[@class];
+            if (state.Room < 0)
+            {
+                return null;
+            }
+
+            return Problem.Rooms[Problem.Classes[@class].PossibleRooms[state.Room].Id];
         }
 
         public int GetRoomId(int @class)

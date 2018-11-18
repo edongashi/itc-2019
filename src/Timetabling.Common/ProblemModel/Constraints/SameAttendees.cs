@@ -25,7 +25,9 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     var classj = Classes[j];
                     var cj = s.GetTime(classj);
                     var rj = s.GetRoom(classj);
-                    var travel = problem.TravelTimes[ri.Id, rj.Id];
+                    var travel = ri != null && rj != null
+                        ? problem.TravelTimes[ri.Id, rj.Id]
+                        : 0;
 
                     if (ci.End + travel <= cj.Start
                         || cj.End + travel <= ci.Start
