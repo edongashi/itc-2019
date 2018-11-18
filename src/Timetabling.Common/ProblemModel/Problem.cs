@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Xml.Linq;
 using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
@@ -304,6 +302,11 @@ namespace Timetabling.Common.ProblemModel
                     0, 0d, 0, 0d, 0, 0d, 0, 0d, 0d, 0d);
             }
 
+            var totalPenaltyStudent = 0;
+            var totalPenaltyTime = 0;
+            var totalPenaltyRoom = 0;
+            var totalPenaltyDistribution = 0;
+
             for (var i = 0; i < studentStates.Length; i++)
             {
                 var studentData = Students[i];
@@ -349,6 +352,7 @@ namespace Timetabling.Common.ProblemModel
                 }
 
                 softPenalty += conflicts * StudentPenalty;
+                totalPenaltyStudent += conflicts * StudentPenalty;
                 studentStates[i] = new StudentState(enrollmentStates.ToArray(), conflicts);
             }
 
@@ -366,13 +370,17 @@ namespace Timetabling.Common.ProblemModel
                 var classData = Classes[i];
                 var schedule = classData.PossibleSchedules[state.Time];
 
+                softPenalty += TimePenalty * schedule.Penalty;
+                totalPenaltyTime += TimePenalty * schedule.Penalty;
+
                 var roomId = -1;
                 var roomCapacityPenalty = 0d;
                 var classCapacityPenalty = 0d;
                 var roomUnavailablePenalty = 0d;
                 if (state.Room >= 0)
                 {
-                    roomId = classData.PossibleRooms[state.Room].Id;
+                    var roomAssignment = classData.PossibleRooms[state.Room];
+                    roomId = roomAssignment.Id;
                     var room = Rooms[roomId];
                     roomCapacityPenalty = state.Attendees > room.Capacity
                         ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) * Solution.CapacityOverflowRate
@@ -395,8 +403,10 @@ namespace Timetabling.Common.ProblemModel
                     }
 
                     hardPenalty += roomUnavailablePenalty;
-                }
 
+                    softPenalty += RoomPenalty * roomAssignment.Penalty;
+                    totalPenaltyRoom += RoomPenalty * roomAssignment.Penalty;
+                }
 
                 var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(partialSolution);
                 var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(partialSolution);
@@ -407,7 +417,7 @@ namespace Timetabling.Common.ProblemModel
                 softPenalty += DistributionPenalty * commonSoftPenalty;
                 softPenalty += DistributionPenalty * roomSoftPenalty;
                 softPenalty += DistributionPenalty * timeSoftPenalty;
-
+                totalPenaltyDistribution += commonSoftPenalty + roomSoftPenalty + timeSoftPenalty;
                 for (var j = 0; j < i; j++)
                 {
                     var otherClassState = classStates[j];
