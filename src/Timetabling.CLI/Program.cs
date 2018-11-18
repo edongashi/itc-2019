@@ -43,6 +43,11 @@ namespace Timetabling.CLI
 
             solver
                 .Solve(problem, cancellation.Token)
+                .Tap(solution =>
+                {
+                    Console.WriteLine($"Hard: {solution.HardPenalty}, Soft: {solution.SoftPenalty}, Constraint errors: {solution.FailedHardConstraints()}");
+                    Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()} ({solution.FailedSoftConstraints()})");
+                })
                 .Log("Serializing solution...")
                 .Serialize()
                 .Log("Saving solution...")

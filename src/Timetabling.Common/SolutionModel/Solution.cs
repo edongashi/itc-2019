@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Xml.Linq;
 using Timetabling.Common.ProblemModel;
 using Timetabling.Common.Utils;
@@ -133,6 +134,79 @@ namespace Timetabling.Common.SolutionModel
         Problem ISolution.Problem => Problem;
 
         public double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
+
+        public int FailedHardConstraints()
+        {
+            int count = 0;
+            foreach (var constraint in Problem.Constraints.Where(c => c.Required))
+            {
+                if (constraint.Evaluate(this).hardPenalty > 0d)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public int FailedSoftConstraints()
+        {
+            int count = 0;
+            foreach (var constraint in Problem.Constraints.Where(c => !c.Required))
+            {
+                if (constraint.Evaluate(this).softPenalty > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public int RoomPenalty()
+        {
+            var roomPenalty = 0;
+            for (var i = 0; i < Problem.Classes.Length; i++)
+            {
+                var @class = Problem.Classes[i];
+                var state = classStates[i];
+                if (state.Room != -1)
+                {
+                    roomPenalty += @class.PossibleRooms[state.Room].Penalty;
+                }
+            }
+
+            return roomPenalty;
+        }
+
+        public int TimePenalty()
+        {
+            var timePenalty = 0;
+            for (var i = 0; i < Problem.Classes.Length; i++)
+            {
+                var @class = Problem.Classes[i];
+                var state = classStates[i];
+                timePenalty += @class.PossibleSchedules[state.Time].Penalty;
+            }
+
+            return timePenalty;
+        }
+
+        public int DistributionPenalty()
+        {
+            var distributionPenalty = 0;
+            foreach (var constraint in Problem.Constraints.Where(c => !c.Required))
+            {
+                var (hard, soft) = constraint.Evaluate(this);
+                if (soft > 0)
+                {
+                    Console.WriteLine($"{constraint.GetType().Name}->{hard}/{soft}");
+                    distributionPenalty += soft;
+                }
+            }
+
+            return distributionPenalty;
+        }
 
         public ScheduleAssignment GetTime(int @class)
         {
@@ -1039,25 +1113,25 @@ namespace Timetabling.Common.SolutionModel
             {
                 case 0:
                 case 1:
-                    maxVariableLength = 5_000;
+                    maxVariableLength = 20;
                     break;
                 case 2:
-                    maxVariableLength = 70;
+                    maxVariableLength = 8;
                     break;
                 case 3:
-                    maxVariableLength = 18;
-                    break;
-                case 4:
-                    maxVariableLength = 9;
-                    break;
-                case 5:
                     maxVariableLength = 6;
                     break;
+                case 4:
+                    maxVariableLength = 3;
+                    break;
+                case 5:
+                    maxVariableLength = 2;
+                    break;
                 case 6:
-                    maxVariableLength = 5;
+                    maxVariableLength = 2;
                     break;
                 default:
-                    maxVariableLength = 3;
+                    maxVariableLength = 2;
                     break;
             }
 

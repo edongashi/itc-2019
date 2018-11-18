@@ -50,7 +50,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
 
         protected virtual Solution Optimize(Solution solution, Random random)
         {
-            const int maxClasses = 8;
+            const int maxClasses = 6;
 
             //Console.WriteLine($"Fixing constraint {(Required ? "R/" : "")}{GetType().Name}[{Classes.Length}]...");
 

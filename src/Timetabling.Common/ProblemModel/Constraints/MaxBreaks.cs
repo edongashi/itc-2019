@@ -82,7 +82,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             }
 
             return Required
-                ? ((double)totalOverflows / nrWeeks, Penalty * totalOverflows / nrWeeks)
+                ? ((double)totalOverflows / nrWeeks, 0)
                 : (0d, Penalty * totalOverflows / nrWeeks);
         }
     }

@@ -14,7 +14,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public override (double hardPenalty, int softPenalty) Evaluate(ISolution s)
         {
-            var hardPenalty = 0;
+            var penalty = 0;
             for (var i = 0; i < Classes.Length - 1; i++)
             {
                 var ci = s.GetRoomId(Classes[i]);
@@ -25,22 +25,17 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     {
                         continue;
                     }
-
-                    if (!Required)
-                    {
-                        return (0d, Penalty);
-                    }
-
-                    hardPenalty++;
+                    
+                    penalty++;
                 }
 
-                if (hardPenalty == 0)
+                if (penalty == 0)
                 {
                     break;
                 }
             }
 
-            return hardPenalty != 0 ? (hardPenalty, Penalty) : (0d, 0);
+            return Required ? (penalty, 0) : (0, penalty);
         }
     }
 }
