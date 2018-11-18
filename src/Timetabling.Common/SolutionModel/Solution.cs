@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using Timetabling.Common.ProblemModel;
 using Timetabling.Common.Utils;
 
@@ -947,6 +948,77 @@ namespace Timetabling.Common.SolutionModel
                 softPenalty,
                 classStates.With(classUpdates),
                 studentStates.With(new Override<StudentState>(student, new StudentState(enrollmentStates, conflictingPairs))));
+        }
+
+        public bool HasClass(int student, int @class)
+        {
+            var state = studentStates[student];
+            var studentData = Problem.Students[student];
+            if (studentData.EnrollmentConfigurations.TryGetValue(@class, out var config))
+            {
+                var courseState = state.EnrollmentStates[config.CourseIndex];
+                if (config.ConfigIndex != courseState.ConfigIndex)
+                {
+                    return false;
+                }
+
+                return courseState.Subparts[config.SubpartIndex] == config.ClassIndex;
+            }
+
+            return false;
+        }
+
+        public XElement Serialize()
+        {
+            return Serialize(0d, 1, "", "", "", "");
+        }
+
+        public XElement Serialize(
+            double runtime,
+            int cores,
+            string technique,
+            string author,
+            string institution,
+            string country)
+        {
+            var result = new XElement("solution",
+                new XAttribute("name", Problem.Name),
+                new XAttribute("runtime", runtime.ToString("0.00")),
+                new XAttribute("cores", cores.ToString()),
+                new XAttribute("technique", technique),
+                new XAttribute("author", author),
+                new XAttribute("institution", institution),
+                new XAttribute("country", country));
+
+            for (var i = 0; i < classStates.Length; i++)
+            {
+                var state = classStates[i];
+                var time = GetTime(i);
+                var classElement = new XElement("class",
+                    new XAttribute("id", (i + 1).ToString()),
+                    new XAttribute("days", time.Days.ToBinary(Problem.DaysPerWeek)),
+                    new XAttribute("start", time.Start.ToString()),
+                    new XAttribute("weeks", time.Weeks.ToBinary(Problem.NumberOfWeeks)));
+                if (state.Room >= 0)
+                {
+                    var room = GetRoom(i);
+                    classElement.Add(new XAttribute("room", room.Id + 1));
+                }
+
+                for (var s = 0; s < studentStates.Length; s++)
+                {
+                    if (HasClass(s, i))
+                    {
+                        classElement.Add(
+                            new XElement("student",
+                                new XAttribute("id", (s + 1).ToString())));
+                    }
+                }
+
+                result.Add(classElement);
+            }
+
+            return result;
         }
     }
 }

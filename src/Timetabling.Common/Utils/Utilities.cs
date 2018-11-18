@@ -1,4 +1,6 @@
-﻿namespace Timetabling.Common.Utils
+﻿using System;
+
+namespace Timetabling.Common.Utils
 {
     public static class Utilities
     {
@@ -13,6 +15,22 @@
             {
                 return (int)c;
             }
+        }
+
+        public static string ToBinary(this uint value, int length)
+        {
+            var val = Convert.ToString(value, 2);
+            if (val.Length < length)
+            {
+                return val.PadLeft(length, '0');
+            }
+
+            if (val.Length > length)
+            {
+                return val.Substring(val.Length - length);
+            }
+
+            return val;
         }
     }
 }

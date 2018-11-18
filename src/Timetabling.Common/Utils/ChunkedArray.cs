@@ -93,7 +93,7 @@ namespace Timetabling.Common.Utils
                 added = true;
             }
 
-            if (added)
+            if (!added)
             {
                 return this;
             }
