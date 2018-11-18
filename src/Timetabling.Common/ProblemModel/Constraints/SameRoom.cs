@@ -1,4 +1,5 @@
-﻿using Timetabling.Common.SolutionModel;
+﻿using Timetabling.Common.ProblemModel.Constraints.Internal;
+using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
@@ -16,10 +17,10 @@ namespace Timetabling.Common.ProblemModel.Constraints
             var hardPenalty = 0;
             for (var i = 0; i < Classes.Length - 1; i++)
             {
-                var ci = s.GetRoom(Classes[i]);
+                var ci = s.GetRoomId(Classes[i]);
                 for (var j = i + 1; j < Classes.Length; j++)
                 {
-                    var cj = s.GetRoom(Classes[i]);
+                    var cj = s.GetRoomId(Classes[j]);
                     if (ci == cj)
                     {
                         continue;

@@ -69,6 +69,11 @@
             return true;
         }
 
+        public override string ToString()
+        {
+            return $"({Start},{End})";
+        }
+
         private static uint Msb(uint x)
         {
             x |= x >> 1;

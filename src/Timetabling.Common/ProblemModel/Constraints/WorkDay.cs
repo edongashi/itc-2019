@@ -1,4 +1,5 @@
 ﻿using System;
+using Timetabling.Common.ProblemModel.Constraints.Internal;
 using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
@@ -23,7 +24,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                 var ci = s.GetTime(Classes[i]);
                 for (var j = i + 1; j < Classes.Length; j++)
                 {
-                    var cj = s.GetTime(Classes[i]);
+                    var cj = s.GetTime(Classes[j]);
                     if ((ci.Days & cj.Days) == 0u
                         || (ci.Weeks & cj.Weeks) == 0u
                         || Math.Max(ci.End, cj.End) - Math.Min(ci.Start, cj.Start) <= S)

@@ -12,6 +12,8 @@ namespace Timetabling.Common.SolutionModel
 
         Room GetRoom(int @class);
 
+        int GetRoomId(int @class);
+
         Problem Problem { get; }
     }
 
@@ -62,6 +64,21 @@ namespace Timetabling.Common.SolutionModel
                 }
 
                 return inner.GetTime(@class);
+            }
+
+            public int GetRoomId(int @class)
+            {
+                if (classOverride.Class == @class)
+                {
+                    if (classOverride.Room < 0)
+                    {
+                        return -1;
+                    }
+
+                    return inner.Problem.Classes[@class].PossibleRooms[classOverride.Room].Id;
+                }
+
+                return inner.GetRoomId(@class);
             }
 
             public Room GetRoom(int @class)
@@ -115,7 +132,7 @@ namespace Timetabling.Common.SolutionModel
 
         Problem ISolution.Problem => Problem;
 
-        public double NormalizedPenalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
+        public double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
 
         public ScheduleAssignment GetTime(int @class)
         {
@@ -135,7 +152,28 @@ namespace Timetabling.Common.SolutionModel
 
         public int GetRoomId(int @class)
         {
-            return Problem.Classes[@class].PossibleRooms[classStates[@class].Room].Id;
+            var room = classStates[@class].Room;
+            if (room < 0)
+            {
+                return -1;
+            }
+
+            return Problem.Classes[@class].PossibleRooms[room].Id;
+        }
+
+        public Solution WithVariable(int @class, int value, VariableType type)
+        {
+            switch (type)
+            {
+                case VariableType.None:
+                    return this;
+                case VariableType.Time:
+                    return WithTime(@class, value);
+                case VariableType.Room:
+                    return WithRoom(@class, value);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
         }
 
         public Solution WithRoom(int @class, int room)
@@ -977,6 +1015,131 @@ namespace Timetabling.Common.SolutionModel
             }
 
             return false;
+        }
+
+        public Solution RandomizedTimeClimb(int[] classes, Random random, Func<Solution, bool> constraint)
+        {
+            return RandomizedClimb(classes, random, VariableType.Time, constraint);
+        }
+
+        public Solution RandomizedRoomClimb(int[] classes, Random random, Func<Solution, bool> constraint)
+        {
+            return RandomizedClimb(classes, random, VariableType.Room, constraint);
+        }
+
+        private Solution RandomizedClimb(int[] classes, Random random, VariableType type, Func<Solution, bool> constraint)
+        {
+            if (classes.Length == 0)
+            {
+                return this;
+            }
+
+            int maxVariableLength;
+            switch (classes.Length)
+            {
+                case 0:
+                case 1:
+                    maxVariableLength = 5_000;
+                    break;
+                case 2:
+                    maxVariableLength = 70;
+                    break;
+                case 3:
+                    maxVariableLength = 18;
+                    break;
+                case 4:
+                    maxVariableLength = 9;
+                    break;
+                case 5:
+                    maxVariableLength = 6;
+                    break;
+                case 6:
+                    maxVariableLength = 5;
+                    break;
+                default:
+                    maxVariableLength = 3;
+                    break;
+            }
+
+            var sparseVariables = type == VariableType.Room ? Problem.RoomVariablesSparse : Problem.TimeVariablesSparse;
+            var max = classes.Length - 1;
+
+            var variables = new int[classes.Length][];
+
+            var currentPenalty = Penalty;
+            var bestQuality = this;
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var variable = sparseVariables[classes[i]].Shuffle(random);
+                variables[i] = variable;
+                if (variable.Length > 0)
+                {
+                    bestQuality = bestQuality.WithVariable(classes[i], variable[0], type);
+                }
+            }
+
+            Solution bestSatisfied = null;
+            if (constraint(bestQuality))
+            {
+                bestSatisfied = bestQuality;
+            }
+
+            bool Climb(Solution current, int index)
+            {
+                var variable = variables[index];
+                var variableLength = Math.Min(variable.Length, maxVariableLength);
+                if (variableLength > 0)
+                {
+                    var @class = classes[index];
+                    for (var i = 0; i < variableLength; i++)
+                    {
+                        var value = variable[i];
+                        var candidate = current.WithVariable(@class, value, type);
+
+                        if (constraint(candidate))
+                        {
+                            if (bestSatisfied == null)
+                            {
+                                bestSatisfied = candidate;
+                            }
+                            else if (candidate.Penalty <= bestSatisfied.Penalty)
+                            {
+                                bestSatisfied = candidate;
+                            }
+
+                            if (bestSatisfied.Penalty < currentPenalty)
+                            {
+                                return true;
+                            }
+                        }
+
+                        if (candidate.Penalty <= bestQuality.Penalty)
+                        {
+                            bestQuality = candidate;
+                        }
+
+                        if (index < max)
+                        {
+                            if (Climb(candidate, index + 1))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                else if (index < max)
+                {
+                    if (Climb(current, index + 1))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            Climb(bestQuality, 0);
+            return bestSatisfied ?? bestQuality;
         }
 
         public XElement Serialize()

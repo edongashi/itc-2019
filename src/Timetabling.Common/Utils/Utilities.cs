@@ -32,5 +32,22 @@ namespace Timetabling.Common.Utils
 
             return val;
         }
+
+        public static int[] Shuffle(int n, Random random)
+        {
+            var result = new int[n];
+            for (var i = 0; i < n; i++)
+            {
+                var j = random.Next(0, i + 1);
+                if (i != j)
+                {
+                    result[i] = result[j];
+                }
+
+                result[j] = i;
+            }
+
+            return result;
+        }
     }
 }

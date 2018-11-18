@@ -1,4 +1,5 @@
-﻿using Timetabling.Common.SolutionModel;
+﻿using Timetabling.Common.ProblemModel.Constraints.Internal;
+using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
@@ -19,7 +20,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                 var ci = s.GetTime(Classes[i]);
                 for (var j = i + 1; j < Classes.Length; j++)
                 {
-                    var cj = s.GetTime(Classes[i]);
+                    var cj = s.GetTime(Classes[j]);
                     if (ci.End <= cj.Start
                         || cj.End <= ci.Start
                         || (ci.Days & cj.Days) == 0u

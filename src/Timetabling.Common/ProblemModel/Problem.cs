@@ -154,9 +154,11 @@ namespace Timetabling.Common.ProblemModel
                 Students[i] = new StudentData(student.Id, student.Courses, enrollmentConfig, classes);
             }
 
-            var (timeVariables, roomVariables) = GetClassVariables();
+            var (timeVariables, roomVariables, timeSparse, roomSparse) = GetClassVariables();
             TimeVariables = timeVariables;
             RoomVariables = roomVariables;
+            TimeVariablesSparse = timeSparse;
+            RoomVariablesSparse = roomSparse;
             AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
             StudentVariables = GetStudentVariables();
             InitialSolution = CreateInitialSolution();
@@ -196,9 +198,43 @@ namespace Timetabling.Common.ProblemModel
 
         public readonly Variable[] AllClassVariables;
 
+        public readonly Variable[] TimeVariablesSparse;
+
+        public readonly Variable[] RoomVariablesSparse;
+
         public readonly CourseVariable[] StudentVariables;
 
         public readonly Solution InitialSolution;
+
+        public int[] PluckTimeClasses(int count, Random random)
+        {
+            var result = new List<int>(count);
+            for (var i = 0; i < count; i++)
+            {
+                var variable = TimeVariables[random.Next(TimeVariables.Length)];
+                if (!result.Contains(variable.Class))
+                {
+                    result.Add(variable.Class);
+                }
+            }
+
+            return result.ToArray();
+        }
+
+        public int[] PluckRoomClasses(int count, Random random)
+        {
+            var result = new List<int>(count);
+            for (var i = 0; i < count; i++)
+            {
+                var variable = RoomVariables[random.Next(RoomVariables.Length)];
+                if (!result.Contains(variable.Class))
+                {
+                    result.Add(variable.Class);
+                }
+            }
+
+            return result.ToArray();
+        }
 
         private CourseVariable[] GetStudentVariables()
         {
@@ -266,24 +302,30 @@ namespace Timetabling.Common.ProblemModel
             return variables.ToArray();
         }
 
-        private (Variable[] timeVariables, Variable[] roomVariables) GetClassVariables()
+        private (Variable[] timeVariables, Variable[] roomVariables, Variable[] timeSparse, Variable[] roomSparse) GetClassVariables()
         {
             var timeVariables = new List<Variable>();
             var roomVariables = new List<Variable>();
+            var timeSparse = new Variable[Classes.Length];
+            var roomSparse = new Variable[Classes.Length];
             foreach (var classData in Classes)
             {
                 if (classData.PossibleSchedules.Length > 1)
                 {
-                    timeVariables.Add(new Variable(classData.Id, classData.PossibleSchedules.Length));
+                    var variable = new Variable(classData.Id, classData.PossibleSchedules.Length, VariableType.Time);
+                    timeVariables.Add(variable);
+                    timeSparse[classData.Id] = variable;
                 }
 
                 if (classData.PossibleRooms.Length > 1)
                 {
-                    roomVariables.Add(new Variable(classData.Id, classData.PossibleRooms.Length));
+                    var variable = new Variable(classData.Id, classData.PossibleRooms.Length, VariableType.Room);
+                    roomVariables.Add(variable);
+                    roomSparse[classData.Id] = variable;
                 }
             }
 
-            return (timeVariables.ToArray(), roomVariables.ToArray());
+            return (timeVariables.ToArray(), roomVariables.ToArray(), timeSparse, roomSparse);
         }
 
         private Solution CreateInitialSolution()

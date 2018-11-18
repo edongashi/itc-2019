@@ -1,4 +1,5 @@
-﻿using Timetabling.Common.SolutionModel;
+﻿using Timetabling.Common.ProblemModel.Constraints.Internal;
+using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel.Constraints

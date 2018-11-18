@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel
@@ -14,9 +15,13 @@ namespace Timetabling.Common.ProblemModel
     {
         ConstraintType Type { get; }
 
+        bool Required { get; }
+
         bool InvolvesClass(int @class);
 
         (double hardPenalty, int softPenalty) Evaluate(ISolution s);
+
+        Solution TryFix(Solution solution, Random random);
     }
 
     public static class ConstraintExtensions
