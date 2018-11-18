@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.IO;
+using Timetabling.Common.ProblemModel;
 
 namespace Timetabling.CLI
 {
@@ -6,7 +7,16 @@ namespace Timetabling.CLI
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            if (args == null || args.Length == 0)
+            {
+                return;
+            }
+
+            using (var stream = File.OpenRead(args[0]))
+            {
+                var problem = ProblemParser.FromXml(stream);
+                var solution = problem.InitialSolution;
+            }
         }
     }
 }

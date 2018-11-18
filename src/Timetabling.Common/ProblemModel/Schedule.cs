@@ -18,6 +18,8 @@
 
         public readonly int Length;
 
+        public int End => Start + Length;
+
         public bool IsBefore(Schedule other)
         {
             var w1 = Msb(Weeks);

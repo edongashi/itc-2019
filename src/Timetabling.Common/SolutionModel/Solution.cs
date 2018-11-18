@@ -5,10 +5,87 @@ using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.SolutionModel
 {
-    public class Solution
+    public interface ISolution
     {
+        ScheduleAssignment GetTime(int @class);
+
+        Room GetRoom(int @class);
+
+        Problem Problem { get; }
+    }
+
+    public static class SolutionExtensions
+    {
+        public static int TravelTime(this ISolution solution, int class1, int class2)
+        {
+            var room1 = solution.GetRoom(class1).Id;
+            var room2 = solution.GetRoom(class2).Id;
+            return solution.Problem.TravelTimes[room1, room2];
+        }
+    }
+
+    public class Solution : ISolution
+    {
+        private struct ClassOverride
+        {
+            public ClassOverride(int @class, int room, int time)
+            {
+                Class = @class;
+                Room = room;
+                Time = time;
+            }
+
+            public readonly int Class;
+
+            public readonly int Room;
+
+            public readonly int Time;
+        }
+
+        private class SolutionProxy : ISolution
+        {
+            private readonly Solution inner;
+            private readonly ClassOverride classOverride;
+
+            public SolutionProxy(Solution inner, ClassOverride classOverride)
+            {
+                this.inner = inner;
+                this.classOverride = classOverride;
+            }
+
+            public ScheduleAssignment GetTime(int @class)
+            {
+                if (classOverride.Class == @class)
+                {
+                    return inner.Problem.Classes[@class].PossibleSchedules[classOverride.Time];
+                }
+
+                return inner.GetTime(@class);
+            }
+
+            public Room GetRoom(int @class)
+            {
+                if (classOverride.Class == @class)
+                {
+                    return inner.Problem.Rooms[inner.Problem.Classes[@class].PossibleRooms[classOverride.Room].Id];
+                }
+
+                return inner.GetRoom(@class);
+            }
+
+            public Problem Problem => inner.Problem;
+        }
+
+        private ISolution With(ClassOverride ov)
+        {
+            return new SolutionProxy(this, ov);
+        }
+
         internal const double CapacityOverflowBase = 0.9d;
         internal const double CapacityOverflowRate = 0.1d;
+
+        private readonly ChunkedArray<ClassState> classStates;
+        private readonly ChunkedArray<StudentState> studentStates;
 
         internal Solution(
             Problem problem,
@@ -20,8 +97,8 @@ namespace Timetabling.Common.SolutionModel
             Problem = problem;
             HardPenalty = hardPenalty;
             SoftPenalty = softPenalty;
-            ClassStates = classStates;
-            StudentStates = studentStates;
+            this.classStates = classStates;
+            this.studentStates = studentStates;
         }
 
         public readonly Problem Problem;
@@ -30,15 +107,28 @@ namespace Timetabling.Common.SolutionModel
 
         public readonly int SoftPenalty;
 
-        public readonly ChunkedArray<ClassState> ClassStates;
-
-        public readonly ChunkedArray<StudentState> StudentStates;
+        Problem ISolution.Problem => Problem;
 
         public double NormalizedPenalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
 
+        public ScheduleAssignment GetTime(int @class)
+        {
+            return Problem.Classes[@class].PossibleSchedules[classStates[@class].Time];
+        }
+
+        public Room GetRoom(int @class)
+        {
+            return Problem.Rooms[Problem.Classes[@class].PossibleRooms[classStates[@class].Room].Id];
+        }
+
+        public int GetRoomId(int @class)
+        {
+            return Problem.Classes[@class].PossibleRooms[classStates[@class].Room].Id;
+        }
+
         public Solution WithRoom(int @class, int room)
         {
-            var classStates = ClassStates;
+            var classStates = this.classStates;
             if (@class < 0 || @class >= classStates.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(@class));
@@ -70,15 +160,15 @@ namespace Timetabling.Common.SolutionModel
                               - state.CommonSoftPenalty
                               - oldRoomAssignment.Penalty * Problem.RoomPenalty;
 
-            var ov = new ClassOverride(@class, room, state.Time);
+            var self = With(new ClassOverride(@class, room, state.Time));
 
             // Eval Room constraints of C
-            var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(Problem, this, ov);
+            var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(self);
             hardPenalty += roomHardPenalty;
             softPenalty += Problem.DistributionPenalty * roomSoftPenalty;
 
             // Eval Common constraints of C
-            var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(Problem, this, ov);
+            var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(self);
             hardPenalty += commonHardPenalty;
             softPenalty += Problem.DistributionPenalty * commonSoftPenalty;
 
@@ -168,7 +258,7 @@ namespace Timetabling.Common.SolutionModel
             var studentOverrides = new List<Override<StudentState>>();
             var courses = Problem.Courses;
             var possibleStudents = courses[classData.CourseId].PossibleStudents;
-            var studentStates = StudentStates;
+            var studentStates = this.studentStates;
             var students = Problem.Students;
             var travelTimes = Problem.TravelTimes;
             var studentPenalty = Problem.StudentPenalty;
@@ -283,7 +373,7 @@ namespace Timetabling.Common.SolutionModel
 
         public Solution WithTime(int @class, int time)
         {
-            var classStates = ClassStates;
+            var classStates = this.classStates;
             if (@class < 0 || @class >= classStates.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(@class));
@@ -313,15 +403,15 @@ namespace Timetabling.Common.SolutionModel
                               - state.CommonSoftPenalty
                               - oldSchedule.Penalty * Problem.TimePenalty;
 
-            var ov = new ClassOverride(@class, state.Room, time);
+            var self = With(new ClassOverride(@class, state.Room, time));
 
             // Eval Time constraints of C
-            var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(Problem, this, ov);
+            var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(self);
             hardPenalty += timeHardPenalty;
             softPenalty += Problem.DistributionPenalty * timeSoftPenalty;
 
             // Eval Common constraints of C
-            var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(Problem, this, ov);
+            var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(self);
             hardPenalty += commonHardPenalty;
             softPenalty += Problem.DistributionPenalty * commonSoftPenalty;
 
@@ -390,7 +480,7 @@ namespace Timetabling.Common.SolutionModel
             var studentOverrides = new List<Override<StudentState>>();
             var courses = Problem.Courses;
             var possibleStudents = courses[classData.CourseId].PossibleStudents;
-            var studentStates = StudentStates;
+            var studentStates = this.studentStates;
             var students = Problem.Students;
             var travelTimes = Problem.TravelTimes;
             var studentPenalty = Problem.StudentPenalty;
@@ -501,7 +591,7 @@ namespace Timetabling.Common.SolutionModel
 
         public Solution WithEnrollment(int student, int @class)
         {
-            var studentStates = StudentStates;
+            var studentStates = this.studentStates;
             var studentState = studentStates[student];
             var studentData = Problem.Students[student];
             var enrollmentConfigurations = studentData.EnrollmentConfigurations;
@@ -565,7 +655,7 @@ namespace Timetabling.Common.SolutionModel
             enrollmentStates[courseIndex] = newState;
 
             var hardPenalty = HardPenalty;
-            var classStates = ClassStates;
+            var classStates = this.classStates;
             var courses = Problem.Courses;
             var rooms = Problem.Rooms;
             var studentCourses = studentData.Courses;

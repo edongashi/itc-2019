@@ -1,6 +1,4 @@
-﻿using System.Collections;
-
-namespace Timetabling.Common.ProblemModel
+﻿namespace Timetabling.Common.ProblemModel
 {
     public class ScheduleAssignment : Schedule
     {

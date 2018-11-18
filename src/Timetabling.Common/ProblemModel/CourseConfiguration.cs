@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace Timetabling.Common.ProblemModel
@@ -51,7 +50,7 @@ namespace Timetabling.Common.ProblemModel
                         var found = false;
                         for (var j = index - 1; j >= 0; j--)
                         {
-                            if (solution[j].classid == classId)
+                            if (solution[j].classid == @class.ParentId)
                             {
                                 found = true;
                                 break;

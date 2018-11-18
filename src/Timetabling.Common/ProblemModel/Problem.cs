@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
@@ -8,6 +10,8 @@ namespace Timetabling.Common.ProblemModel
 {
     public class Problem
     {
+        private const string CorruptInstance = "Corrupt problem instance.";
+
         public Problem(
             string name,
             int numberOfWeeks,
@@ -156,6 +160,7 @@ namespace Timetabling.Common.ProblemModel
             TimeVariables = timeVariables;
             RoomVariables = roomVariables;
             AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
+            StudentVariables = GetStudentVariables();
             InitialSolution = CreateInitialSolution();
         }
 
@@ -193,13 +198,74 @@ namespace Timetabling.Common.ProblemModel
 
         public readonly Variable[] AllClassVariables;
 
-        public readonly CourseVariable[] EnrollmentVariables;
+        public readonly CourseVariable[] StudentVariables;
 
         public readonly Solution InitialSolution;
 
-        private CourseVariable[] GetCourseVariables()
+        private CourseVariable[] GetStudentVariables()
         {
+            var variables = new List<CourseVariable>();
+            for (var i = 0; i < Students.Length; i++)
+            {
+                var student = Students[i];
+                for (var j = 0; j < student.Courses.Length; j++)
+                {
+                    var course = Courses[student.Courses[j]];
+                    if (course.Configurations.Length == 1)
+                    {
+                        var subparts = course.Configurations[0].Subparts;
+                        if (subparts.All(subpart => subpart.Classes.Length <= 1))
+                        {
+                            // One configuration, all subparts predetermined
+                            // -> nothing that can be mutated in this course.
+                            continue;
+                        }
+                    }
+                    else if (course.Configurations.Length == 0)
+                    {
+                        throw new InvalidOperationException(CorruptInstance);
+                    }
 
+                    var configs = new List<int[][]>();
+                    foreach (var config in course.Configurations)
+                    {
+                        var configVariables = new List<int[]>();
+                        foreach (var subpart in config.Subparts)
+                        {
+                            var isParentSubpart = subpart.Classes.All(c => Classes[c.Id].HasChildren);
+
+                            if (isParentSubpart)
+                            {
+                                continue;
+                            }
+
+                            var variable = subpart.Classes.Select(@class => @class.Id).ToArray();
+                            if (variable.Length == 0)
+                            {
+                                throw new InvalidOperationException(CorruptInstance);
+                            }
+
+                            configVariables.Add(variable);
+                        }
+
+                        if (configVariables.Count == 0)
+                        {
+                            throw new InvalidOperationException(CorruptInstance);
+                        }
+
+                        configs.Add(configVariables.ToArray());
+                    }
+
+                    if (configs.Count == 0)
+                    {
+                        throw new InvalidOperationException(CorruptInstance);
+                    }
+
+                    variables.Add(new CourseVariable(student.Id, configs.ToArray()));
+                }
+            }
+
+            return variables.ToArray();
         }
 
         private (Variable[] timeVariables, Variable[] roomVariables) GetClassVariables()
@@ -222,8 +288,6 @@ namespace Timetabling.Common.ProblemModel
             return (timeVariables.ToArray(), roomVariables.ToArray());
         }
 
-
-
         private Solution CreateInitialSolution()
         {
             const int chunkSize = 256;
@@ -236,7 +300,7 @@ namespace Timetabling.Common.ProblemModel
                 var classData = Classes[i];
                 classStates[i] = new ClassState(
                     classData.PossibleRooms.Length > 0 ? 0 : -1,
-                    classData.PossibleSchedules.Length > 0 ? 0 : throw new InvalidOperationException("Corrupt problem instance."),
+                    classData.PossibleSchedules.Length > 0 ? 0 : throw new InvalidOperationException(CorruptInstance),
                     0, 0d, 0, 0d, 0, 0d, 0, 0d, 0d, 0d);
             }
 
@@ -251,7 +315,7 @@ namespace Timetabling.Common.ProblemModel
                     var course = Courses[courseId];
                     if (course.BaselineConfiguration == -1)
                     {
-                        throw new InvalidOperationException("Corrupt problem instance.");
+                        throw new InvalidOperationException(CorruptInstance);
                     }
 
                     var enrollmentState = new EnrollmentState(course.BaselineConfiguration, course.Baseline);
@@ -325,9 +389,9 @@ namespace Timetabling.Common.ProblemModel
 
                 hardPenalty += roomUnavailablePenalty;
 
-                var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(this, partialSolution);
-                var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(this, partialSolution);
-                var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(this, partialSolution);
+                var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(partialSolution);
+                var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(partialSolution);
+                var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(partialSolution);
                 hardPenalty += commonHardPenalty;
                 hardPenalty += roomHardPenalty;
                 hardPenalty += timeHardPenalty;
