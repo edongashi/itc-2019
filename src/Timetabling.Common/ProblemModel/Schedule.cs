@@ -35,7 +35,7 @@
             }
 
             var d1 = Msb(Days);
-            var d2 = Msb(Days);
+            var d2 = Msb(other.Days);
             if (d1 > d2)
             {
                 return true;
