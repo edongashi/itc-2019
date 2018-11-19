@@ -24,6 +24,11 @@ namespace Timetabling.Common.ProblemModel
             Student[] students,
             IConstraint[] constraints)
         {
+            rooms = rooms.OrderBy(r => r.Id).ToArray();
+            courses = courses.OrderBy(c => c.Id).ToArray();
+            students = students.OrderBy(s => s.Id).ToArray();
+            constraints = constraints.OrderBy(c => c.Id).ToArray();
+
             Name = name;
             NumberOfWeeks = numberOfWeeks;
             DaysPerWeek = daysPerWeek;

@@ -19,7 +19,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
         public override (double hardPenalty, int softPenalty) Evaluate(ISolution s)
         {
             var acc = 0u;
-            for (var i = 0; i < Classes.Length - 1; i++)
+            for (var i = 0; i < Classes.Length; i++)
             {
                 acc = acc | s.GetTime(Classes[i]).Days;
             }
