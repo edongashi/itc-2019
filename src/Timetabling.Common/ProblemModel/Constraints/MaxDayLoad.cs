@@ -6,8 +6,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class MaxDayLoad : ConstraintBase
     {
-        public MaxDayLoad(int s, bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public MaxDayLoad(int id, int s, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
             S = s;
         }

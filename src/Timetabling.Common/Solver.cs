@@ -12,7 +12,7 @@ namespace Timetabling.Common
     {
         private static readonly object RandomLock = new object();
 
-        public double MaxTemperature = 1d;
+        public double MaxTemperature = 0.5d;
 
         public double TemperatureChange = 0.999999d;
 
@@ -40,6 +40,17 @@ namespace Timetabling.Common
 
             var s = problem.InitialSolution;
             Console.WriteLine($"[{s.Penalty}] Empty solution...");
+
+            {
+                var solution = s;
+                Console.WriteLine("=== Empty Solution ===");
+                var (hrd, sft) = solution.CalculatePenalty();
+                Console.WriteLine($"Hard penalty: {hrd}, Soft: {sft}, Normalized: {solution.Penalty}");
+                Console.WriteLine($"Hard penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty}");
+                Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()}");
+                Console.WriteLine($"Failures: Hard: {solution.FailedHardConstraints()}, Soft: {solution.FailedSoftConstraints()}");
+            }
+
 
             Console.WriteLine("Assigning class variables...");
             foreach (var variable in problem.AllClassVariables.OrderBy(_ => random.Next()))
@@ -160,6 +171,21 @@ namespace Timetabling.Common
             if (problem.AllClassVariables.Length > 0)
             {
                 mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
+                //mutations.Add(new VariableMutation(1));
                 //mutations.Add(new VariableMutation(10));
                 //mutations.Add(new VariableMutation(1));
                 //mutations.Add(new VariableMutation(1));
@@ -174,7 +200,7 @@ namespace Timetabling.Common
 
             if (problem.Constraints.Length > 0)
             {
-                //mutations.Add(new ConstraintClimb(1));
+                //mutations.Add(new ConstraintMutation(1));
             }
 
             return mutations;

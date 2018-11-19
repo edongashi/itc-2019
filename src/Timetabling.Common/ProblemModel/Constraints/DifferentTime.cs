@@ -5,8 +5,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class DifferentTime : ConstraintBase
     {
-        public DifferentTime(bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public DifferentTime(int id, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
         }
 

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Runtime.InteropServices.ComTypes;
 using Timetabling.Common.ProblemModel.Constraints.Internal;
 using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
@@ -8,8 +7,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class MaxBlock : ConstraintBase
     {
-        public MaxBlock(int m, int s, bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public MaxBlock(int id, int m, int s, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
             M = m;
             S = s;

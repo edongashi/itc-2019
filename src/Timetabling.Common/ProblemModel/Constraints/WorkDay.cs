@@ -6,8 +6,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class WorkDay : ConstraintBase
     {
-        public WorkDay(int s, bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public WorkDay(int id, int s, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
             S = s;
         }

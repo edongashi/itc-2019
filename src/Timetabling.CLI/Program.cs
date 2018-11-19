@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Timetabling.Common;
 using Timetabling.Common.ProblemModel;
-using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.CLI
 {
@@ -45,8 +43,12 @@ namespace Timetabling.CLI
                 .Solve(problem, cancellation.Token)
                 .Tap(solution =>
                 {
-                    Console.WriteLine($"Hard: {solution.HardPenalty}, Soft: {solution.SoftPenalty}, Constraint errors: {solution.FailedHardConstraints()}");
-                    Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()} ({solution.FailedSoftConstraints()})");
+                    Console.WriteLine("=== Final Solution ===");
+                    var (h, s) = solution.CalculatePenalty();
+                    Console.WriteLine($"Hard penalty: {h}, Soft: {s}, Normalized: {solution.Penalty}");
+                    Console.WriteLine($"Hard penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty}");
+                    Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()}");
+                    Console.WriteLine($"Failures: Hard: {solution.FailedHardConstraints()}, Soft: {solution.FailedSoftConstraints()}");
                 })
                 .Log("Serializing solution...")
                 .Serialize()

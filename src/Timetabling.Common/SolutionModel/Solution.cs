@@ -110,19 +110,22 @@ namespace Timetabling.Common.SolutionModel
 
         private readonly ChunkedArray<ClassState> classStates;
         private readonly ChunkedArray<StudentState> studentStates;
+        private readonly ChunkedArray<ConstraintState> constraintStates;
 
         internal Solution(
             Problem problem,
             double hardPenalty,
             int softPenalty,
             ChunkedArray<ClassState> classStates,
-            ChunkedArray<StudentState> studentStates)
+            ChunkedArray<StudentState> studentStates,
+            ChunkedArray<ConstraintState> constraintStates)
         {
             Problem = problem;
             HardPenalty = hardPenalty;
             SoftPenalty = softPenalty;
             this.classStates = classStates;
             this.studentStates = studentStates;
+            this.constraintStates = constraintStates;
         }
 
         public readonly Problem Problem;
@@ -134,6 +137,29 @@ namespace Timetabling.Common.SolutionModel
         Problem ISolution.Problem => Problem;
 
         public double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
+
+        public (double hardPenalty, int softPenalty) CalculatePenalty()
+        {
+            var (distHard, distSoft) = CalculateDistributionPenalty();
+
+            return (distHard,
+                TimePenalty() * Problem.TimePenalty
+                + RoomPenalty() * Problem.RoomPenalty
+                + StudentPenalty() * Problem.StudentPenalty
+                + distSoft * Problem.DistributionPenalty);
+        }
+
+        public int StudentPenalty()
+        {
+            var conflicts = 0;
+            //for (var i = 0; i < studentStates.Length; i++)
+            //{
+            //    var state = studentStates[i];
+            // TODO
+            //}
+
+            return conflicts;
+        }
 
         public int FailedHardConstraints()
         {
@@ -194,18 +220,22 @@ namespace Timetabling.Common.SolutionModel
 
         public int DistributionPenalty()
         {
-            var distributionPenalty = 0;
-            foreach (var constraint in Problem.Constraints.Where(c => !c.Required))
+            return CalculateDistributionPenalty().softPenalty;
+        }
+
+        private (double hardPenalty, int softPenalty) CalculateDistributionPenalty()
+        {
+            var hard = 0d;
+            var soft = 0;
+            foreach (var constraint in Problem.Constraints)
             {
-                var (hard, soft) = constraint.Evaluate(this);
-                if (soft > 0)
-                {
-                    Console.WriteLine($"{constraint.GetType().Name}->{hard}/{soft}");
-                    distributionPenalty += soft;
-                }
+                var (h, s) = constraint.Evaluate(this);
+                hard += h;
+                soft += s;
+                Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
             }
 
-            return distributionPenalty;
+            return (hard, soft);
         }
 
         public ScheduleAssignment GetTime(int @class)
@@ -275,26 +305,53 @@ namespace Timetabling.Common.SolutionModel
             var oldRoomAssignment = classData.PossibleRooms[oldRoomIndex];
             var oldRoom = Problem.Rooms[oldRoomAssignment.Id];
             var hardPenalty = HardPenalty
-                              - state.RoomHardPenalty
-                              - state.CommonHardPenalty
                               - state.RoomCapacityPenalty
                               - state.RoomUnavailablePenalty;
             var softPenalty = SoftPenalty
-                              - state.RoomSoftPenalty
-                              - state.CommonSoftPenalty
                               - oldRoomAssignment.Penalty * Problem.RoomPenalty;
 
             var self = With(new ClassOverride(@class, room, state.Time));
 
+            // ReSharper disable once LocalVariableHidesMember
+            var constraintStates = this.constraintStates;
+
             // Eval Room constraints of C
-            var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(self);
-            hardPenalty += roomHardPenalty;
-            softPenalty += Problem.DistributionPenalty * roomSoftPenalty;
+            // ReSharper disable once ForCanBeConvertedToForeach
+            var roomConstraints = classData.RoomConstraints;
+            for (var i = 0; i < roomConstraints.Length; i++)
+            {
+                var roomConstraint = roomConstraints[i];
+                var current = constraintStates[roomConstraint.Id];
+                var (roomHardPenalty, roomSoftPenalty) = roomConstraint.Evaluate(self);
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                if (roomHardPenalty != current.HardPenalty || roomSoftPenalty != current.SoftPenalty)
+                {
+                    hardPenalty += roomHardPenalty - current.HardPenalty;
+                    softPenalty += Problem.DistributionPenalty * (roomSoftPenalty - current.SoftPenalty);
+                    constraintStates = constraintStates.With(
+                        new Override<ConstraintState>(roomConstraint.Id,
+                            new ConstraintState(roomHardPenalty, roomSoftPenalty)));
+                }
+            }
 
             // Eval Common constraints of C
-            var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(self);
-            hardPenalty += commonHardPenalty;
-            softPenalty += Problem.DistributionPenalty * commonSoftPenalty;
+            // ReSharper disable once ForCanBeConvertedToForeach
+            var commonConstraints = classData.CommonConstraints;
+            for (var i = 0; i < commonConstraints.Length; i++)
+            {
+                var commonConstraint = commonConstraints[i];
+                var current = constraintStates[commonConstraint.Id];
+                var (commonHardPenalty, commonSoftPenalty) = commonConstraint.Evaluate(self);
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                if (commonHardPenalty != current.HardPenalty || commonSoftPenalty != current.SoftPenalty)
+                {
+                    hardPenalty += commonHardPenalty - current.HardPenalty;
+                    softPenalty += Problem.DistributionPenalty * (commonSoftPenalty - current.SoftPenalty);
+                    constraintStates = constraintStates.With(
+                        new Override<ConstraintState>(commonConstraint.Id,
+                            new ConstraintState(commonHardPenalty, commonSoftPenalty)));
+                }
+            }
 
             // Eval new room penalty
             softPenalty += classData.PossibleRooms[room].Penalty * Problem.RoomPenalty;
@@ -477,12 +534,6 @@ namespace Timetabling.Common.SolutionModel
                 room,
                 state.Time,
                 state.Attendees,
-                state.TimeHardPenalty,
-                state.TimeSoftPenalty,
-                commonHardPenalty,
-                commonSoftPenalty,
-                roomHardPenalty,
-                roomSoftPenalty,
                 state.ClassCapacityPenalty,
                 roomCapacityPenalty,
                 roomUnavailablePenalty);
@@ -492,7 +543,8 @@ namespace Timetabling.Common.SolutionModel
                 hardPenalty,
                 softPenalty,
                 classStates.With(new Override<ClassState>(@class, newClassState)),
-                studentStates.With(studentOverrides));
+                studentStates.With(studentOverrides),
+                constraintStates);
         }
 
         public Solution WithTime(int @class, int time)
@@ -519,25 +571,52 @@ namespace Timetabling.Common.SolutionModel
 
             var oldSchedule = classData.PossibleSchedules[oldScheduleIndex];
             var hardPenalty = HardPenalty
-                              - state.TimeHardPenalty
-                              - state.CommonHardPenalty
                               - state.RoomUnavailablePenalty;
             var softPenalty = SoftPenalty
-                              - state.RoomSoftPenalty
-                              - state.CommonSoftPenalty
                               - oldSchedule.Penalty * Problem.TimePenalty;
 
             var self = With(new ClassOverride(@class, state.Room, time));
 
+            // ReSharper disable once LocalVariableHidesMember
+            var constraintStates = this.constraintStates;
+
             // Eval Time constraints of C
-            var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(self);
-            hardPenalty += timeHardPenalty;
-            softPenalty += Problem.DistributionPenalty * timeSoftPenalty;
+            // ReSharper disable once ForCanBeConvertedToForeach
+            var timeConstraints = classData.TimeConstraints;
+            for (var i = 0; i < timeConstraints.Length; i++)
+            {
+                var timeConstraint = timeConstraints[i];
+                var current = constraintStates[timeConstraint.Id];
+                var (timeHardPenalty, timeSoftPenalty) = timeConstraint.Evaluate(self);
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                if (timeHardPenalty != current.HardPenalty || timeSoftPenalty != current.SoftPenalty)
+                {
+                    hardPenalty += timeHardPenalty - current.HardPenalty;
+                    softPenalty += Problem.DistributionPenalty * (timeSoftPenalty - current.SoftPenalty);
+                    constraintStates = constraintStates.With(
+                        new Override<ConstraintState>(timeConstraint.Id,
+                            new ConstraintState(timeHardPenalty, timeSoftPenalty)));
+                }
+            }
 
             // Eval Common constraints of C
-            var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(self);
-            hardPenalty += commonHardPenalty;
-            softPenalty += Problem.DistributionPenalty * commonSoftPenalty;
+            // ReSharper disable once ForCanBeConvertedToForeach
+            var commonConstraints = classData.CommonConstraints;
+            for (var i = 0; i < commonConstraints.Length; i++)
+            {
+                var commonConstraint = commonConstraints[i];
+                var current = constraintStates[commonConstraint.Id];
+                var (commonHardPenalty, commonSoftPenalty) = commonConstraint.Evaluate(self);
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
+                if (commonHardPenalty != current.HardPenalty || commonSoftPenalty != current.SoftPenalty)
+                {
+                    hardPenalty += commonHardPenalty - current.HardPenalty;
+                    softPenalty += Problem.DistributionPenalty * (commonSoftPenalty - current.SoftPenalty);
+                    constraintStates = constraintStates.With(
+                        new Override<ConstraintState>(commonConstraint.Id,
+                            new ConstraintState(commonHardPenalty, commonSoftPenalty)));
+                }
+            }
 
             // Eval new time penalty
             var newSchedule = classData.PossibleSchedules[time];
@@ -695,12 +774,6 @@ namespace Timetabling.Common.SolutionModel
                 state.Room,
                 time,
                 state.Attendees,
-                timeHardPenalty,
-                timeSoftPenalty,
-                commonHardPenalty,
-                commonSoftPenalty,
-                state.RoomHardPenalty,
-                state.RoomSoftPenalty,
                 state.ClassCapacityPenalty,
                 state.RoomCapacityPenalty,
                 roomUnavailablePenalty);
@@ -710,7 +783,8 @@ namespace Timetabling.Common.SolutionModel
                 hardPenalty,
                 softPenalty,
                 classStates.With(new Override<ClassState>(@class, newClassState)),
-                studentStates.With(studentOverrides));
+                studentStates.With(studentOverrides),
+                constraintStates);
         }
 
         public Solution WithEnrollment(int student, int @class)
@@ -1070,7 +1144,8 @@ namespace Timetabling.Common.SolutionModel
                 hardPenalty,
                 softPenalty,
                 classStates.With(classUpdates),
-                studentStates.With(new Override<StudentState>(student, new StudentState(enrollmentStates, conflictingPairs))));
+                studentStates.With(new Override<StudentState>(student, new StudentState(enrollmentStates, conflictingPairs))),
+                constraintStates);
         }
 
         public bool HasClass(int student, int @class)

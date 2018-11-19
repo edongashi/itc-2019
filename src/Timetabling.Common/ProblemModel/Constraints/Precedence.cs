@@ -5,8 +5,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class Precedence : ConstraintBase
     {
-        public Precedence(bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public Precedence(int id, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
         }
 

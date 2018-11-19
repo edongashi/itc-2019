@@ -151,7 +151,7 @@ namespace Timetabling.Common.ProblemModel
                     .ToArray());
         }
 
-        public static IConstraint ToConstraint(XElement element)
+        public static IConstraint ToConstraint(XElement element, int id)
         {
             var type = element.RequiredAttribute("type");
             var required = element.OptionalAttribute("required") == "true";
@@ -178,43 +178,43 @@ namespace Timetabling.Common.ProblemModel
             switch (type)
             {
                 case nameof(SameStart):
-                    return new SameStart(required, penalty, classes);
+                    return new SameStart(id, required, penalty, classes);
                 case nameof(SameTime):
-                    return new SameTime(required, penalty, classes);
+                    return new SameTime(id, required, penalty, classes);
                 case nameof(SameDays):
-                    return new SameDays(required, penalty, classes);
+                    return new SameDays(id, required, penalty, classes);
                 case nameof(SameWeeks):
-                    return new SameWeeks(required, penalty, classes);
+                    return new SameWeeks(id, required, penalty, classes);
                 case nameof(SameRoom):
-                    return new SameRoom(required, penalty, classes);
+                    return new SameRoom(id, required, penalty, classes);
                 case nameof(Overlap):
-                    return new Overlap(required, penalty, classes);
+                    return new Overlap(id, required, penalty, classes);
                 case nameof(SameAttendees):
-                    return new SameAttendees(required, penalty, classes);
+                    return new SameAttendees(id, required, penalty, classes);
                 case nameof(Precedence):
-                    return new Precedence(required, penalty, classes);
+                    return new Precedence(id, required, penalty, classes);
                 case nameof(WorkDay):
-                    return new WorkDay(args[0], required, penalty, classes);
+                    return new WorkDay(id, args[0], required, penalty, classes);
                 case nameof(MinGap):
-                    return new MinGap(args[0], required, penalty, classes);
+                    return new MinGap(id, args[0], required, penalty, classes);
                 case nameof(MaxDays):
-                    return new MaxDays(args[0], required, penalty, classes);
+                    return new MaxDays(id, args[0], required, penalty, classes);
                 case nameof(MaxDayLoad):
-                    return new MaxDayLoad(args[0], required, penalty, classes);
+                    return new MaxDayLoad(id, args[0], required, penalty, classes);
                 case nameof(MaxBreaks):
-                    return new MaxBreaks(args[0], args[1], required, penalty, classes);
+                    return new MaxBreaks(id, args[0], args[1], required, penalty, classes);
                 case nameof(MaxBlock):
-                    return new MaxBlock(args[0], args[1], required, penalty, classes);
+                    return new MaxBlock(id, args[0], args[1], required, penalty, classes);
                 case nameof(DifferentTime):
-                    return new DifferentTime(required, penalty, classes);
+                    return new DifferentTime(id, required, penalty, classes);
                 case nameof(DifferentDays):
-                    return new DifferentDays(required, penalty, classes);
+                    return new DifferentDays(id, required, penalty, classes);
                 case nameof(DifferentWeeks):
-                    return new DifferentWeeks(required, penalty, classes);
+                    return new DifferentWeeks(id, required, penalty, classes);
                 case nameof(DifferentRoom):
-                    return new DifferentRoom(required, penalty, classes);
+                    return new DifferentRoom(id, required, penalty, classes);
                 case nameof(NotOverlap):
-                    return new NotOverlap(required, penalty, classes);
+                    return new NotOverlap(id, required, penalty, classes);
                 default:
                     throw new InvalidOperationException("Invalid constraint type.");
             }

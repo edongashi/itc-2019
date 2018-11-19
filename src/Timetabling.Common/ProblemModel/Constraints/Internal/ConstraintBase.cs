@@ -14,17 +14,24 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
 
         protected readonly HashSet<int> ClassesSet;
 
-        protected ConstraintBase(bool required, int penalty, int[] classes)
+        protected ConstraintBase(int id, bool required, int penalty, int[] classes)
         {
+            Id = id;
             Required = required;
             Penalty = penalty;
             Classes = classes.ToArray();
             ClassesSet = new HashSet<int>(classes);
         }
 
+        public readonly int Id;
+
         public readonly bool Required;
 
+        int IConstraint.Id => Id;
+
         bool IConstraint.Required => Required;
+
+        IEnumerable<int> IConstraint.Classes => Classes;
 
         public readonly int Penalty;
 

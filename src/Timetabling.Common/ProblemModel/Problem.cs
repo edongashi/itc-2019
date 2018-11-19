@@ -65,6 +65,7 @@ namespace Timetabling.Common.ProblemModel
                         classConstraints.Where(constraint => constraint.Type == ConstraintType.Room),
                         rawClasses.Where(rc => rc.ParentId == c.Id).Select(rc => rc.Id));
                 })
+                .OrderBy(c => c.Id)
                 .ToArray();
 
             foreach (var @class in Classes)
@@ -341,7 +342,7 @@ namespace Timetabling.Common.ProblemModel
                 classStates[i] = new ClassState(
                     classData.PossibleRooms.Length > 0 ? 0 : -1,
                     classData.PossibleSchedules.Length > 0 ? 0 : throw new InvalidOperationException(CorruptInstance),
-                    0, 0d, 0, 0d, 0, 0d, 0, 0d, 0d, 0d);
+                    0, 0d, 0d, 0d);
             }
 
             var totalPenaltyStudent = 0;
@@ -378,7 +379,7 @@ namespace Timetabling.Common.ProblemModel
                         classStates[classObject.Id] = classState = classState
                             .WithAttendees(classState.Attendees + 1, 0d, 0d);
                         var schedule = classData.PossibleSchedules[classState.Time];
-                        var room = classData.PossibleRooms[classState.Room].Id;
+                        var room = classState.Room >= 0 ? classData.PossibleRooms[classState.Room].Id : -1;
 
                         foreach (var (prevSchedule, prevRoom) in classesSoFar)
                         {
@@ -394,16 +395,9 @@ namespace Timetabling.Common.ProblemModel
                 }
 
                 softPenalty += conflicts * StudentPenalty;
-                totalPenaltyStudent += conflicts * StudentPenalty;
+                totalPenaltyStudent += conflicts;
                 studentStates[i] = new StudentState(enrollmentStates.ToArray(), conflicts);
             }
-
-            var partialSolution = new Solution(
-                this,
-                hardPenalty,
-                softPenalty,
-                new ChunkedArray<ClassState>(classStates, chunkSize),
-                new ChunkedArray<StudentState>(studentStates, chunkSize));
 
             var classConflicts = 0;
             for (var i = 0; i < classStates.Length; i++)
@@ -413,7 +407,7 @@ namespace Timetabling.Common.ProblemModel
                 var schedule = classData.PossibleSchedules[state.Time];
 
                 softPenalty += TimePenalty * schedule.Penalty;
-                totalPenaltyTime += TimePenalty * schedule.Penalty;
+                totalPenaltyTime += schedule.Penalty;
 
                 var roomId = -1;
                 var roomCapacityPenalty = 0d;
@@ -447,19 +441,9 @@ namespace Timetabling.Common.ProblemModel
                     hardPenalty += roomUnavailablePenalty;
 
                     softPenalty += RoomPenalty * roomAssignment.Penalty;
-                    totalPenaltyRoom += RoomPenalty * roomAssignment.Penalty;
+                    totalPenaltyRoom += roomAssignment.Penalty;
                 }
 
-                var (commonHardPenalty, commonSoftPenalty) = classData.CommonConstraints.Evaluate(partialSolution);
-                var (roomHardPenalty, roomSoftPenalty) = classData.RoomConstraints.Evaluate(partialSolution);
-                var (timeHardPenalty, timeSoftPenalty) = classData.TimeConstraints.Evaluate(partialSolution);
-                hardPenalty += commonHardPenalty;
-                hardPenalty += roomHardPenalty;
-                hardPenalty += timeHardPenalty;
-                softPenalty += DistributionPenalty * commonSoftPenalty;
-                softPenalty += DistributionPenalty * roomSoftPenalty;
-                softPenalty += DistributionPenalty * timeSoftPenalty;
-                totalPenaltyDistribution += commonSoftPenalty + roomSoftPenalty + timeSoftPenalty;
                 for (var j = 0; j < i; j++)
                 {
                     var otherClassState = classStates[j];
@@ -486,12 +470,6 @@ namespace Timetabling.Common.ProblemModel
                     state.Room,
                     state.Time,
                     state.Attendees,
-                    timeHardPenalty,
-                    timeSoftPenalty,
-                    commonHardPenalty,
-                    commonSoftPenalty,
-                    roomHardPenalty,
-                    roomSoftPenalty,
                     classCapacityPenalty,
                     roomCapacityPenalty,
                     roomUnavailablePenalty);
@@ -499,12 +477,32 @@ namespace Timetabling.Common.ProblemModel
 
             hardPenalty += classConflicts;
 
+            var constraintStates = new ConstraintState[Constraints.Length];
+
+            var partialSolution = new Solution(
+                this,
+                hardPenalty,
+                softPenalty,
+                new ChunkedArray<ClassState>(classStates, chunkSize),
+                new ChunkedArray<StudentState>(studentStates, chunkSize),
+                new ChunkedArray<ConstraintState>(constraintStates, chunkSize));
+
+            foreach (var constraint in Constraints)
+            {
+                var (h, s) = constraint.Evaluate(partialSolution);
+                constraintStates[constraint.Id] = new ConstraintState(h, s);
+                hardPenalty += h;
+                softPenalty += s * DistributionPenalty;
+                totalPenaltyDistribution += s;
+            }
+
             return new Solution(
                 this,
                 hardPenalty,
                 softPenalty,
                 new ChunkedArray<ClassState>(classStates, chunkSize),
-                new ChunkedArray<StudentState>(studentStates, chunkSize));
+                new ChunkedArray<StudentState>(studentStates, chunkSize),
+                new ChunkedArray<ConstraintState>(constraintStates, chunkSize));
         }
     }
 }

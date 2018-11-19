@@ -7,8 +7,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class MaxBreaks : ConstraintBase
     {
-        public MaxBreaks(int r, int s, bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public MaxBreaks(int id, int r, int s, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
             R = r;
             S = s;
@@ -56,7 +56,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     }
 
                     mergedBlocks.Add(blocks[0]);
-                    for (var i = 1; i < count; i++)
+                    for (var i = 1; i < mergedBlocks.Count; i++)
                     {
                         var top = mergedBlocks.Peek();
                         var current = blocks[i];
@@ -70,7 +70,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                         else if (end < current.End)
                         {
                             // We need to expand range.
-                            mergedBlocks[count - 1] = new Block(top.Start, current.End);
+                            mergedBlocks[mergedBlocks.Count - 1] = new Block(top.Start, current.End);
                         }
                     }
 

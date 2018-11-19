@@ -5,8 +5,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class NotOverlap : ConstraintBase
     {
-        public NotOverlap(bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public NotOverlap(int id, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
         }
 

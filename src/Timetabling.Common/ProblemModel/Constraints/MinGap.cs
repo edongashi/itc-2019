@@ -5,8 +5,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class MinGap : ConstraintBase
     {
-        public MinGap(int g, bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public MinGap(int id, int g, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
             G = g;
         }

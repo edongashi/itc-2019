@@ -1,13 +1,12 @@
-﻿using System;
-using Timetabling.Common.ProblemModel.Constraints.Internal;
+﻿using Timetabling.Common.ProblemModel.Constraints.Internal;
 using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class SameDays : ConstraintBase
     {
-        public SameDays(bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public SameDays(int id, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
         }
 

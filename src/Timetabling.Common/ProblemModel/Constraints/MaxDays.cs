@@ -6,8 +6,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 {
     public class MaxDays : ConstraintBase
     {
-        public MaxDays(int d, bool required, int penalty, int[] classes)
-            : base(required, penalty, classes)
+        public MaxDays(int id, int d, bool required, int penalty, int[] classes)
+            : base(id, required, penalty, classes)
         {
             D = d;
         }
@@ -21,7 +21,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             var acc = 0u;
             for (var i = 0; i < Classes.Length - 1; i++)
             {
-                acc |= s.GetTime(Classes[i]).Days;
+                acc = acc | s.GetTime(Classes[i]).Days;
             }
 
             var count = Utilities.BitCount(acc);
@@ -32,7 +32,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
             count -= D;
             return Required
-                ? (count, count * Penalty)
+                ? (count, 0)
                 : (0d, count * Penalty);
         }
     }
