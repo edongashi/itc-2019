@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Xml.Linq;
 using Timetabling.Common.ProblemModel;
@@ -144,6 +145,7 @@ namespace Timetabling.Common.SolutionModel
 
             return (
                 distHard
+                + RoomUnavailablePenalty()
                 + RoomCapacityPenalty()
                 + ClassCapacityPenalty()
                 + ClassConflicts(),
@@ -157,13 +159,47 @@ namespace Timetabling.Common.SolutionModel
         public void PrintStats()
         {
             var (h, s) = CalculatePenalty();
-            Console.WriteLine($"Instance penalty: Hard: {HardPenalty}, Soft: {SoftPenalty}, Normalized: {Penalty}");
-            Console.WriteLine($"Computed penalty: Hard: {h}, Soft: {s}, Normalized: {h + s / (s + 1d)}");
+            Console.WriteLine("========================================");
+            Console.WriteLine($"=== Hard Penalty ({HardPenalty}) ===");
+            Console.WriteLine($"Class conflicts: {ClassConflicts()}");
+            Console.WriteLine($"Class capacity penalty: {ClassCapacityPenalty()}");
+            Console.WriteLine($"Room capacity penalty: {RoomCapacityPenalty()}");
+            Console.WriteLine($"Room unavailable penalty: {RoomUnavailablePenalty()}");
+            Console.WriteLine($"=== Soft Penalty {SoftPenalty} ===");
             Console.WriteLine($"Time penalty: {TimePenalty()}");
             Console.WriteLine($"Room penalty: {RoomPenalty()}");
             Console.WriteLine($"Dist penalty: {DistributionPenalty()}");
             Console.WriteLine($"Student penalty: {StudentPenalty()}");
+            Console.WriteLine("=== Constraints ===");
             Console.WriteLine($"Failures: Hard: {FailedHardConstraints()}, Soft: {FailedSoftConstraints()}");
+            Console.WriteLine($"Instance penalty: Hard: {HardPenalty}, Soft: {SoftPenalty}, Normalized: {Penalty}");
+            Console.WriteLine($"Computed penalty: Hard: {h}, Soft: {s}, Normalized: {h + s / (s + 1d)}");
+            Console.WriteLine("========================================");
+        }
+
+        public int RoomUnavailablePenalty()
+        {
+            var penalty = 0;
+            var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var (ci, ti, ri) = classes[i];
+                if (ri != null)
+                {
+                    var room = Problem.Rooms[ri.Id];
+                    foreach (var schedule in room.UnavailableSchedules)
+                    {
+                        if (schedule.Overlaps(ti))
+                        {
+                            penalty++;
+                            Debug.Assert(ci.RoomUnavailablePenalty > 0);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return penalty;
         }
 
         public int RoomCapacityPenalty()
@@ -177,7 +213,9 @@ namespace Timetabling.Common.SolutionModel
                 {
                     if (ci.Attendees > ri.Capacity)
                     {
-                        penalty += CapacityOverflowBase + (ci.Attendees - ri.Capacity) / CapacityOverflowRate;
+                        var val = CapacityOverflowBase + (ci.Attendees - ri.Capacity) / CapacityOverflowRate;
+                        penalty += val;
+                        Debug.Assert(ci.RoomCapacityPenalty == val);
                     }
                 }
             }
@@ -194,7 +232,9 @@ namespace Timetabling.Common.SolutionModel
                 var (ci, ti, ri) = classes[i];
                 if (ci.Attendees > Problem.Classes[i].Capacity)
                 {
-                    penalty += CapacityOverflowBase + (ci.Attendees - Problem.Classes[i].Capacity) / CapacityOverflowRate;
+                    var val = CapacityOverflowBase + (ci.Attendees - Problem.Classes[i].Capacity) / CapacityOverflowRate;
+                    Debug.Assert(val == ci.ClassCapacityPenalty);
+                    penalty += val;
                 }
             }
 

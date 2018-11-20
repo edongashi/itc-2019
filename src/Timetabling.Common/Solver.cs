@@ -14,7 +14,7 @@ namespace Timetabling.Common
 
         public double MaxTemperature = 0.5d;
 
-        public double TemperatureChange = 0.99999d;
+        public double TemperatureChange = 0.999999d;
 
         public Solution Solve(Problem problem, CancellationToken cancellation)
         {
@@ -108,6 +108,11 @@ namespace Timetabling.Common
                 if (++i % 1000 == 0)
                 {
                     Console.WriteLine($"Cycle[{i}] Quality[{s.Penalty}] Temp[{t}]");
+                }
+
+                if (i % 10000 == 0)
+                {
+                    best.PrintStats();
                 }
             }
 
