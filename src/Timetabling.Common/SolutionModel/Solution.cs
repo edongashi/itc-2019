@@ -232,10 +232,10 @@ namespace Timetabling.Common.SolutionModel
                 var (h, s) = constraint.Evaluate(this);
                 hard += h;
                 soft += s;
-                //if (h > 0d)
-                //{
-                //    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
-                //}
+                if (h > 0d)
+                {
+                    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
+                }
             }
 
             return (hard, soft);

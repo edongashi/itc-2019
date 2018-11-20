@@ -39,17 +39,15 @@ namespace Timetabling.CLI
                 }
             });
 
-            solver
-                .Solve(problem, cancellation.Token)
-                .Tap(solution =>
-                {
-                    Console.WriteLine("=== Final Solution ===");
-                    var (h, s) = solution.CalculatePenalty();
-                    Console.WriteLine($"Hard penalty: {h}, Soft: {s}, Normalized: {solution.Penalty}");
-                    Console.WriteLine($"Hard penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty}");
-                    Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()}");
-                    Console.WriteLine($"Failures: Hard: {solution.FailedHardConstraints()}, Soft: {solution.FailedSoftConstraints()}");
-                })
+            var solution = solver.Solve(problem, cancellation.Token);
+            Console.WriteLine("=== Final Solution ===");
+            var (h, s) = solution.CalculatePenalty();
+            Console.WriteLine($"Hard penalty: {h}, Soft: {s}, Normalized: {solution.Penalty}");
+            Console.WriteLine($"Hard penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty}");
+            Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()}");
+            Console.WriteLine($"Failures: Hard: {solution.FailedHardConstraints()}, Soft: {solution.FailedSoftConstraints()}");
+
+            solution
                 .Log("Serializing solution...")
                 .Serialize()
                 .Log("Saving solution...")

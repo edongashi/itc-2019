@@ -15,7 +15,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
         public override (double hardPenalty, int softPenalty) Evaluate(ISolution s)
         {
             var penalty = 0;
-            for (var i = 0; i < Classes.Length; i++)
+            for (var i = 0; i < Classes.Length - 1; i++)
             {
                 var ci = s.GetTime(Classes[i]);
                 for (var j = i + 1; j < Classes.Length; j++)

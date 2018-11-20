@@ -15,7 +15,7 @@ namespace Timetabling.Common
 
         public double MaxTemperature = 0.5d;
 
-        public double TemperatureChange = 0.999999d;
+        public double TemperatureChange = 0.9999999d;
 
         public Solution Solve(Problem problem, CancellationToken cancellation)
         {
