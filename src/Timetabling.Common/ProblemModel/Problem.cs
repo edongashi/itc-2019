@@ -279,7 +279,15 @@ namespace Timetabling.Common.ProblemModel
                                 continue;
                             }
 
-                            var variable = subpart.Classes.Select(@class => @class.Id).ToArray();
+                            if (subpart.Classes.All(c => c.Capacity <= 0))
+                            {
+                                continue;
+                            }
+
+                            var variable = subpart.Classes
+                                .Where(c => c.Capacity > 0)
+                                .Select(@class => @class.Id).ToArray();
+
                             if (variable.Length == 0)
                             {
                                 throw new InvalidOperationException(CorruptInstance);
@@ -288,12 +296,10 @@ namespace Timetabling.Common.ProblemModel
                             configVariables.Add(variable);
                         }
 
-                        if (configVariables.Count == 0)
+                        if (configVariables.Count != 0)
                         {
-                            throw new InvalidOperationException(CorruptInstance);
+                            configs.Add(configVariables.ToArray());
                         }
-
-                        configs.Add(configVariables.ToArray());
                     }
 
                     if (configs.Count == 0)

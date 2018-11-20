@@ -113,7 +113,7 @@ namespace Timetabling.Common.ProblemModel
                 element.RequiredId(),
                 element.OptionalInteger("parent", 0) - 1,
                 courseId,
-                element.OptionalInteger("limit", int.MaxValue),
+                element.OptionalInteger("limit", 0),
                 element
                     .Elements("room")
                     .Select(ToRoomAssignment)
