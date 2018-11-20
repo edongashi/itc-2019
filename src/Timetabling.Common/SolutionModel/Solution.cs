@@ -149,14 +149,48 @@ namespace Timetabling.Common.SolutionModel
                 + distSoft * Problem.DistributionPenalty);
         }
 
+        public int RoomsOverCapacity()
+        {
+            //var total = 0;
+        }
+
         public int StudentPenalty()
         {
             var conflicts = 0;
-            //for (var i = 0; i < studentStates.Length; i++)
-            //{
-            //    var state = studentStates[i];
-            // TODO
-            //}
+            for (var i = 0; i < StudentStates.Length; i++)
+            {
+                var studentData = Problem.Students[i];
+                var studentState = StudentStates[i];
+                var classesSoFar = new List<(int id, Schedule schedule, int room)>();
+                for (var j = 0; j < studentState.EnrollmentStates.Length; j++)
+                {
+                    var enrollmentState = studentState.EnrollmentStates[j];
+                    var course = Problem
+                        .Courses[studentData.Courses[j]]
+                        .Configurations[enrollmentState.ConfigIndex];
+
+                    for (var k = 0; k < enrollmentState.Subparts.Length; k++)
+                    {
+                        var classIndex = enrollmentState.Subparts[k];
+                        var classObject = course.Subparts[k].Classes[classIndex];
+                        var classData = Problem.Classes[classObject.Id];
+                        var classState = ClassStates[classObject.Id];
+                        var schedule = classData.PossibleSchedules[classState.Time];
+                        var room = classState.Room >= 0 ? classData.PossibleRooms[classState.Room].Id : -1;
+
+                        foreach (var (_, prevSchedule, prevRoom) in classesSoFar)
+                        {
+                            var travelTime = room >= 0 && prevRoom >= 0 ? Problem.TravelTimes[room, prevRoom] : 0;
+                            if (schedule.Overlaps(prevSchedule, travelTime))
+                            {
+                                conflicts++;
+                            }
+                        }
+
+                        classesSoFar.Add((classObject.Id, schedule, room));
+                    }
+                }
+            }
 
             return conflicts;
         }
@@ -232,10 +266,10 @@ namespace Timetabling.Common.SolutionModel
                 var (h, s) = constraint.Evaluate(this);
                 hard += h;
                 soft += s;
-                if (h > 0d)
-                {
-                    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
-                }
+                //if (h > 0d)
+                //{
+                //    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
+                //}
             }
 
             return (hard, soft);

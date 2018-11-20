@@ -15,7 +15,7 @@ namespace Timetabling.Common
 
         public double MaxTemperature = 0.5d;
 
-        public double TemperatureChange = 0.9999999d;
+        public double TemperatureChange = 0.99999d;
 
         public Solution Solve(Problem problem, CancellationToken cancellation)
         {
@@ -44,11 +44,13 @@ namespace Timetabling.Common
 
             {
                 var solution = s;
-                Console.WriteLine("=== Empty Solution ===");
-                var (hrd, sft) = solution.CalculatePenalty();
-                Console.WriteLine($"Hard penalty: {hrd}, Soft: {sft}, Normalized: {solution.Penalty}");
-                Console.WriteLine($"Hard penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty}");
-                Console.WriteLine($"Time penalty: {solution.TimePenalty()} Room penalty: {solution.RoomPenalty()} Dist penalty: {solution.DistributionPenalty()}");
+                var (hh, ss) = solution.CalculatePenalty();
+                Console.WriteLine($"Inst penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty} , Normalized: {solution.Penalty}");
+                Console.WriteLine($"Computed penalty: Hard: {hh}, Soft: {ss}, Normalized: {hh + (ss / ss + 1)}");
+                Console.WriteLine($"Time penalty: {solution.TimePenalty()}");
+                Console.WriteLine($"Room penalty: {solution.RoomPenalty()}");
+                Console.WriteLine($"Dist penalty: {solution.DistributionPenalty()}");
+                Console.WriteLine($"Student penalty: {solution.StudentPenalty()}");
                 Console.WriteLine($"Failures: Hard: {solution.FailedHardConstraints()}, Soft: {solution.FailedSoftConstraints()}");
             }
 

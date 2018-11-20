@@ -66,7 +66,17 @@
 
         public bool Overlaps(Schedule other, int travelTime)
         {
-            return true;
+            if ((Weeks & other.Weeks) == 0u)
+            {
+                return false;
+            }
+
+            if ((Days & other.Days) == 0u)
+            {
+                return false;
+            }
+
+            return Start < other.Start + other.Length + travelTime && other.Start < Start + Length + travelTime;
         }
 
         public override string ToString()
