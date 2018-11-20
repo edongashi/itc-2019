@@ -16,7 +16,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public override ConstraintType Type => ConstraintType.Time;
 
-        public override (double hardPenalty, int softPenalty) Evaluate(ISolution s)
+        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
         {
             var acc = 0u;
             for (var i = 0; i < Classes.Length; i++)
@@ -27,13 +27,13 @@ namespace Timetabling.Common.ProblemModel.Constraints
             var count = Utilities.BitCount(acc);
             if (count <= D)
             {
-                return (0d, 0);
+                return (0, 0);
             }
 
             count -= D;
             return Required
                 ? (count, 0)
-                : (0d, count * Penalty);
+                : (0, count * Penalty);
         }
     }
 }

@@ -343,7 +343,7 @@ namespace Timetabling.Common.ProblemModel
         private Solution CreateInitialSolution()
         {
             const int chunkSize = 256;
-            var hardPenalty = 0d;
+            var hardPenalty = 0;
             var softPenalty = 0;
             var classStates = new ClassState[Classes.Length];
             var studentStates = new StudentState[Students.Length];
@@ -353,7 +353,7 @@ namespace Timetabling.Common.ProblemModel
                 classStates[i] = new ClassState(
                     classData.PossibleRooms.Length > 0 ? 0 : -1,
                     classData.PossibleSchedules.Length > 0 ? 0 : throw new InvalidOperationException(CorruptInstance),
-                    0, 0d, 0d, 0d);
+                    0, 0, 0, 0);
             }
 
             var totalPenaltyStudent = 0;
@@ -388,7 +388,7 @@ namespace Timetabling.Common.ProblemModel
                         var classData = Classes[classObject.Id];
                         var classState = classStates[classObject.Id];
                         classStates[classObject.Id] = classState = classState
-                            .WithAttendees(classState.Attendees + 1, 0d, 0d);
+                            .WithAttendees(classState.Attendees + 1, 0, 0);
                         var schedule = classData.PossibleSchedules[classState.Time];
                         var room = classState.Room >= 0 ? classData.PossibleRooms[classState.Room].Id : -1;
 
@@ -421,11 +421,11 @@ namespace Timetabling.Common.ProblemModel
                 totalPenaltyTime += schedule.Penalty;
 
                 var roomId = -1;
-                var roomCapacityPenalty = 0d;
-                var roomUnavailablePenalty = 0d;
+                var roomCapacityPenalty = 0;
+                var roomUnavailablePenalty = 0;
                 var classCapacityPenalty = state.Attendees > classData.Capacity
-                    ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) * Solution.CapacityOverflowRate
-                    : 0d;
+                    ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) / Solution.CapacityOverflowRate
+                    : 0;
                 hardPenalty += classCapacityPenalty;
 
                 if (state.Room >= 0)
@@ -434,17 +434,17 @@ namespace Timetabling.Common.ProblemModel
                     roomId = roomAssignment.Id;
                     var room = Rooms[roomId];
                     roomCapacityPenalty = state.Attendees > room.Capacity
-                        ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) * Solution.CapacityOverflowRate
-                        : 0d;
+                        ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) / Solution.CapacityOverflowRate
+                        : 0;
 
                     hardPenalty += roomCapacityPenalty;
 
-                    roomUnavailablePenalty = 0d;
+                    roomUnavailablePenalty = 0;
                     foreach (var unavailableSchedule in room.UnavailableSchedules)
                     {
                         if (schedule.Overlaps(unavailableSchedule))
                         {
-                            roomUnavailablePenalty = 1d;
+                            roomUnavailablePenalty = 1;
                             break;
                         }
                     }

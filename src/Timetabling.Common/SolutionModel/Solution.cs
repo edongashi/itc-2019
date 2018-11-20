@@ -105,8 +105,8 @@ namespace Timetabling.Common.SolutionModel
             return new SolutionProxy(this, ov);
         }
 
-        internal const double CapacityOverflowBase = 0.9d;
-        internal const double CapacityOverflowRate = 0.1d;
+        internal const int CapacityOverflowBase = 1;
+        internal const int CapacityOverflowRate = int.MaxValue;
 
         public readonly ChunkedArray<ClassState> ClassStates;
         public readonly ChunkedArray<StudentState> StudentStates;
@@ -114,7 +114,7 @@ namespace Timetabling.Common.SolutionModel
 
         internal Solution(
             Problem problem,
-            double hardPenalty,
+            int hardPenalty,
             int softPenalty,
             ChunkedArray<ClassState> classStates,
             ChunkedArray<StudentState> studentStates,
@@ -130,7 +130,7 @@ namespace Timetabling.Common.SolutionModel
 
         public readonly Problem Problem;
 
-        public readonly double HardPenalty;
+        public readonly int HardPenalty;
 
         public readonly int SoftPenalty;
 
@@ -138,20 +138,103 @@ namespace Timetabling.Common.SolutionModel
 
         public double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
 
-        public (double hardPenalty, int softPenalty) CalculatePenalty()
+        public (int hardPenalty, int softPenalty) CalculatePenalty()
         {
             var (distHard, distSoft) = CalculateDistributionPenalty();
 
-            return (distHard,
+            return (
+                distHard
+                + RoomCapacityPenalty()
+                + ClassCapacityPenalty()
+                + ClassConflicts(),
                 TimePenalty() * Problem.TimePenalty
                 + RoomPenalty() * Problem.RoomPenalty
                 + StudentPenalty() * Problem.StudentPenalty
-                + distSoft * Problem.DistributionPenalty);
+                + distSoft * Problem.DistributionPenalty
+                );
         }
 
-        public int RoomsOverCapacity()
+        public void PrintStats()
         {
-            //var total = 0;
+            var (h, s) = CalculatePenalty();
+            Console.WriteLine($"Instance penalty: Hard: {HardPenalty}, Soft: {SoftPenalty}, Normalized: {Penalty}");
+            Console.WriteLine($"Computed penalty: Hard: {h}, Soft: {s}, Normalized: {h + s / (s + 1d)}");
+            Console.WriteLine($"Time penalty: {TimePenalty()}");
+            Console.WriteLine($"Room penalty: {RoomPenalty()}");
+            Console.WriteLine($"Dist penalty: {DistributionPenalty()}");
+            Console.WriteLine($"Student penalty: {StudentPenalty()}");
+            Console.WriteLine($"Failures: Hard: {FailedHardConstraints()}, Soft: {FailedSoftConstraints()}");
+        }
+
+        public int RoomCapacityPenalty()
+        {
+            var penalty = 0;
+            var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var (ci, ti, ri) = classes[i];
+                if (ri != null)
+                {
+                    if (ci.Attendees > ri.Capacity)
+                    {
+                        penalty += CapacityOverflowBase + (ci.Attendees - ri.Capacity) / CapacityOverflowRate;
+                    }
+                }
+            }
+
+            return penalty;
+        }
+
+        public int ClassCapacityPenalty()
+        {
+            var penalty = 0;
+            var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var (ci, ti, ri) = classes[i];
+                if (ci.Attendees > Problem.Classes[i].Capacity)
+                {
+                    penalty += CapacityOverflowBase + (ci.Attendees - Problem.Classes[i].Capacity) / CapacityOverflowRate;
+                }
+            }
+
+            return penalty;
+        }
+
+        public int ClassConflicts()
+        {
+            var conflicts = 0;
+            var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var (ci, ti, ri) = classes[i];
+                if (ri == null)
+                {
+                    continue;
+                }
+
+                for (var j = i + 1; j < classes.Length; j++)
+                {
+                    var (cj, tj, rj) = classes[j];
+                    if (rj == null)
+                    {
+                        continue;
+                    }
+
+                    if (ri.Id != rj.Id)
+                    {
+                        continue;
+                    }
+
+                    var travelTime = Problem.TravelTimes[ri.Id, rj.Id];
+                    if (ti.Overlaps(tj, travelTime))
+                    {
+                        conflicts++;
+                    }
+                }
+            }
+
+            return conflicts;
         }
 
         public int StudentPenalty()
@@ -257,9 +340,9 @@ namespace Timetabling.Common.SolutionModel
             return CalculateDistributionPenalty().softPenalty;
         }
 
-        private (double hardPenalty, int softPenalty) CalculateDistributionPenalty()
+        private (int hardPenalty, int softPenalty) CalculateDistributionPenalty()
         {
-            var hard = 0d;
+            var hard = 0;
             var soft = 0;
             foreach (var constraint in Problem.Constraints)
             {
@@ -407,13 +490,13 @@ namespace Timetabling.Common.SolutionModel
             // Eval new room capacity
             var newRoom = Problem.Rooms[classData.PossibleRooms[room].Id];
             var roomCapacityPenalty = state.Attendees > newRoom.Capacity
-                ? CapacityOverflowBase + (state.Attendees - newRoom.Capacity) * CapacityOverflowRate
-                : 0d;
+                ? CapacityOverflowBase + (state.Attendees - newRoom.Capacity) / CapacityOverflowRate
+                : 0;
 
             hardPenalty += roomCapacityPenalty;
 
             // Eval new room availability at time
-            var roomUnavailablePenalty = 0d;
+            var roomUnavailablePenalty = 0;
             var schedule = classData.PossibleSchedules[state.Time];
             var unavailableSchedules = newRoom.UnavailableSchedules;
             // ReSharper disable once LoopCanBeConvertedToQuery
@@ -423,7 +506,7 @@ namespace Timetabling.Common.SolutionModel
                 var unavailableSchedule = unavailableSchedules[i];
                 if (schedule.Overlaps(unavailableSchedule))
                 {
-                    roomUnavailablePenalty = 1d;
+                    roomUnavailablePenalty = 1;
                     break;
                 }
             }
@@ -671,7 +754,7 @@ namespace Timetabling.Common.SolutionModel
             softPenalty += newSchedule.Penalty * Problem.TimePenalty;
 
             // Eval room availability at new time
-            var roomUnavailablePenalty = 0d;
+            var roomUnavailablePenalty = 0;
             var roomId = -1;
             if (state.Room >= 0)
             {
@@ -685,7 +768,7 @@ namespace Timetabling.Common.SolutionModel
                     var unavailableSchedule = unavailableSchedules[i];
                     if (newSchedule.Overlaps(unavailableSchedule))
                     {
-                        roomUnavailablePenalty = 1d;
+                        roomUnavailablePenalty = 1;
                         break;
                     }
                 }
@@ -935,19 +1018,19 @@ namespace Timetabling.Common.SolutionModel
                     var oldClassState = classStates[oldClassId];
                     var oldRoom = oldClassState.Room;
                     var oldAttendees = oldClassState.Attendees - 1;
-                    double oldRoomCapacityPenalty;
+                    int oldRoomCapacityPenalty;
                     if (oldRoom >= 0)
                     {
                         oldRoomId = oldClass.PossibleRooms[oldClassState.Room].Id;
                         var oldRoomCapacity = rooms[oldRoomId].Capacity;
                         oldRoomCapacityPenalty = oldAttendees > oldRoomCapacity
-                            ? CapacityOverflowBase + (oldAttendees - oldRoomCapacity) * CapacityOverflowRate
-                            : 0d;
+                            ? CapacityOverflowBase + (oldAttendees - oldRoomCapacity) / CapacityOverflowRate
+                            : 0;
                         hardPenalty += oldRoomCapacityPenalty;
                     }
                     else
                     {
-                        oldRoomCapacityPenalty = 0d;
+                        oldRoomCapacityPenalty = 0;
                     }
 
                     oldSchedule = oldClass.PossibleSchedules[oldClassState.Time];
@@ -955,8 +1038,8 @@ namespace Timetabling.Common.SolutionModel
                     hardPenalty -= oldClassState.RoomCapacityPenalty;
                     hardPenalty -= oldClassState.ClassCapacityPenalty;
                     var oldClassCapacityPenalty = oldAttendees > oldClassCapacity
-                        ? CapacityOverflowBase + (oldAttendees - oldClassCapacity) * CapacityOverflowRate
-                        : 0d;
+                        ? CapacityOverflowBase + (oldAttendees - oldClassCapacity) / CapacityOverflowRate
+                        : 0;
                     classUpdates.Add(new Override<ClassState>(oldClassId,
                         oldClassState.WithAttendees(oldAttendees, oldClassCapacityPenalty, oldRoomCapacityPenalty)));
                     hardPenalty += oldClassCapacityPenalty;
@@ -967,19 +1050,19 @@ namespace Timetabling.Common.SolutionModel
                     var newClassState = classStates[newClassId];
                     var newRoom = newClassState.Room;
                     var newAttendees = newClassState.Attendees + 1;
-                    double newRoomCapacityPenalty;
+                    int newRoomCapacityPenalty;
                     if (newRoom >= 0)
                     {
                         newRoomId = newClass.PossibleRooms[newClassState.Room].Id;
                         var newRoomCapacity = rooms[newRoomId].Capacity;
                         newRoomCapacityPenalty = newAttendees > newRoomCapacity
-                            ? CapacityOverflowBase + (newAttendees - newRoomCapacity) * CapacityOverflowRate
-                            : 0d;
+                            ? CapacityOverflowBase + (newAttendees - newRoomCapacity) / CapacityOverflowRate
+                            : 0;
                         hardPenalty += newRoomCapacityPenalty;
                     }
                     else
                     {
-                        newRoomCapacityPenalty = 0d;
+                        newRoomCapacityPenalty = 0;
                     }
 
                     newSchedule = newClass.PossibleSchedules[newClassState.Time];
@@ -987,8 +1070,8 @@ namespace Timetabling.Common.SolutionModel
                     hardPenalty -= newClassState.RoomCapacityPenalty;
                     hardPenalty -= newClassState.ClassCapacityPenalty;
                     var newClassCapacityPenalty = newAttendees > newClassCapacity
-                        ? CapacityOverflowBase + (newAttendees - newClassCapacity) * CapacityOverflowRate
-                        : 0d;
+                        ? CapacityOverflowBase + (newAttendees - newClassCapacity) / CapacityOverflowRate
+                        : 0;
                     classUpdates.Add(new Override<ClassState>(newClassId,
                         newClassState.WithAttendees(newAttendees, newClassCapacityPenalty, newRoomCapacityPenalty)));
                     hardPenalty += newClassCapacityPenalty;
@@ -1013,19 +1096,19 @@ namespace Timetabling.Common.SolutionModel
                     var oldClassState = classStates[oldClassId];
                     var oldRoom = oldClassState.Room;
                     var oldAttendees = oldClassState.Attendees - 1;
-                    double oldRoomCapacityPenalty;
+                    int oldRoomCapacityPenalty;
                     if (oldRoom >= 0)
                     {
                         oldRoomId = oldClass.PossibleRooms[oldClassState.Room].Id;
                         var oldRoomCapacity = rooms[oldRoomId].Capacity;
                         oldRoomCapacityPenalty = oldAttendees > oldRoomCapacity
-                            ? CapacityOverflowBase + (oldAttendees - oldRoomCapacity) * CapacityOverflowRate
-                            : 0d;
+                            ? CapacityOverflowBase + (oldAttendees - oldRoomCapacity) / CapacityOverflowRate
+                            : 0;
                         hardPenalty += oldRoomCapacityPenalty;
                     }
                     else
                     {
-                        oldRoomCapacityPenalty = 0d;
+                        oldRoomCapacityPenalty = 0;
                     }
 
                     oldSchedule = oldClass.PossibleSchedules[oldClassState.Time];
@@ -1033,8 +1116,8 @@ namespace Timetabling.Common.SolutionModel
                     hardPenalty -= oldClassState.RoomCapacityPenalty;
                     hardPenalty -= oldClassState.ClassCapacityPenalty;
                     var oldClassCapacityPenalty = oldAttendees > oldClassCapacity
-                        ? CapacityOverflowBase + (oldAttendees - oldClassCapacity) * CapacityOverflowRate
-                        : 0d;
+                        ? CapacityOverflowBase + (oldAttendees - oldClassCapacity) / CapacityOverflowRate
+                        : 0;
                     classUpdates.Add(new Override<ClassState>(oldClassId,
                         oldClassState.WithAttendees(oldAttendees, oldClassCapacityPenalty, oldRoomCapacityPenalty)));
                     hardPenalty += oldClassCapacityPenalty;
@@ -1052,19 +1135,19 @@ namespace Timetabling.Common.SolutionModel
                     var newClassState = classStates[newClassId];
                     var newRoom = newClassState.Room;
                     var newAttendees = newClassState.Attendees + 1;
-                    double newRoomCapacityPenalty;
+                    int newRoomCapacityPenalty;
                     if (newRoom >= 0)
                     {
                         newRoomId = newClass.PossibleRooms[newClassState.Room].Id;
                         var newRoomCapacity = rooms[newRoomId].Capacity;
                         newRoomCapacityPenalty = newAttendees > newRoomCapacity
-                            ? CapacityOverflowBase + (newAttendees - newRoomCapacity) * CapacityOverflowRate
-                            : 0d;
+                            ? CapacityOverflowBase + (newAttendees - newRoomCapacity) / CapacityOverflowRate
+                            : 0;
                         hardPenalty += newRoomCapacityPenalty;
                     }
                     else
                     {
-                        newRoomCapacityPenalty = 0d;
+                        newRoomCapacityPenalty = 0;
                     }
 
                     newSchedule = newClass.PossibleSchedules[newClassState.Time];
@@ -1072,8 +1155,8 @@ namespace Timetabling.Common.SolutionModel
                     hardPenalty -= newClassState.RoomCapacityPenalty;
                     hardPenalty -= newClassState.ClassCapacityPenalty;
                     var newClassCapacityPenalty = newAttendees > newClassCapacity
-                        ? CapacityOverflowBase + (newAttendees - newClassCapacity) * CapacityOverflowRate
-                        : 0d;
+                        ? CapacityOverflowBase + (newAttendees - newClassCapacity) / CapacityOverflowRate
+                        : 0;
                     classUpdates.Add(new Override<ClassState>(newClassId,
                         newClassState.WithAttendees(newAttendees, newClassCapacityPenalty, newRoomCapacityPenalty)));
                     hardPenalty += newClassCapacityPenalty;

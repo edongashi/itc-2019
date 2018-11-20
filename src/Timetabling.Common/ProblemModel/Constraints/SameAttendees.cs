@@ -12,7 +12,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public override ConstraintType Type => ConstraintType.Common;
 
-        public override (double hardPenalty, int softPenalty) Evaluate(ISolution s)
+        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
         {
             var penalty = 0;
             var problem = s.Problem;

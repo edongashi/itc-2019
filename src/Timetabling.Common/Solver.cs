@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Timetabling.Common.ProblemModel;
@@ -40,20 +39,8 @@ namespace Timetabling.Common
             }
 
             var s = problem.InitialSolution;
-            Console.WriteLine($"[{s.Penalty}] Empty solution...");
-
-            {
-                var solution = s;
-                var (hh, ss) = solution.CalculatePenalty();
-                Console.WriteLine($"Inst penalty: {solution.HardPenalty}, Soft: {solution.SoftPenalty} , Normalized: {solution.Penalty}");
-                Console.WriteLine($"Computed penalty: Hard: {hh}, Soft: {ss}, Normalized: {hh + (ss / ss + 1)}");
-                Console.WriteLine($"Time penalty: {solution.TimePenalty()}");
-                Console.WriteLine($"Room penalty: {solution.RoomPenalty()}");
-                Console.WriteLine($"Dist penalty: {solution.DistributionPenalty()}");
-                Console.WriteLine($"Student penalty: {solution.StudentPenalty()}");
-                Console.WriteLine($"Failures: Hard: {solution.FailedHardConstraints()}, Soft: {solution.FailedSoftConstraints()}");
-            }
-
+            Console.WriteLine($"=== Empty Solution ===");
+            s.PrintStats();
 
             Console.WriteLine("Assigning class variables...");
             foreach (var variable in problem.AllClassVariables.OrderBy(_ => random.Next()))
@@ -104,12 +91,12 @@ namespace Timetabling.Common
                     temp += 0.1d;
                 }
 
-                if (sc.Penalty <= best.Penalty)
+                if (sc.HardPenalty < best.HardPenalty || sc.HardPenalty == best.HardPenalty && sc.SoftPenalty < best.SoftPenalty)
                 {
                     best = sc;
                 }
 
-                if (sc.Penalty <= s.Penalty)
+                if (sc.HardPenalty < s.HardPenalty || sc.HardPenalty == s.HardPenalty && sc.SoftPenalty < s.SoftPenalty)
                 {
                     s = sc;
                 }

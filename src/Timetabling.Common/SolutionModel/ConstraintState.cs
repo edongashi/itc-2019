@@ -2,13 +2,13 @@
 {
     public class ConstraintState
     {
-        public ConstraintState(double hardPenalty, int softPenalty)
+        public ConstraintState(int hardPenalty, int softPenalty)
         {
             HardPenalty = hardPenalty;
             SoftPenalty = softPenalty;
         }
 
-        public readonly double HardPenalty;
+        public readonly int HardPenalty;
 
         public readonly int SoftPenalty;
     }

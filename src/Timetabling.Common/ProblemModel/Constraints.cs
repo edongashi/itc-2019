@@ -23,27 +23,8 @@ namespace Timetabling.Common.ProblemModel
 
         bool InvolvesClass(int @class);
 
-        (double hardPenalty, int softPenalty) Evaluate(ISolution s);
+        (int hardPenalty, int softPenalty) Evaluate(ISolution s);
 
         Solution TryFix(Solution solution, Random random);
-    }
-
-    public static class ConstraintExtensions
-    {
-        public static (double hardPenalty, int softPenalty) Evaluate(
-            this IEnumerable<IConstraint> @this,
-            ISolution s)
-        {
-            var hardPenalty = 0d;
-            var softPenalty = 0;
-            foreach (var constraint in @this)
-            {
-                var (hp, sp) = constraint.Evaluate(s);
-                hardPenalty += hp;
-                softPenalty += sp;
-            }
-
-            return (hardPenalty, softPenalty);
-        }
     }
 }

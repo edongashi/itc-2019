@@ -20,7 +20,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public override ConstraintType Type => ConstraintType.Time;
 
-        public override (double hardPenalty, int softPenalty) Evaluate(ISolution s)
+        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
         {
             var problem = s.Problem;
             var nrWeeks = problem.NumberOfWeeks;
@@ -87,7 +87,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
             return Required
                 ? (totalOverflows / nrWeeks, 0)
-                : (0d, Penalty * totalOverflows / nrWeeks);
+                : (0, Penalty * totalOverflows / nrWeeks);
         }
     }
 }

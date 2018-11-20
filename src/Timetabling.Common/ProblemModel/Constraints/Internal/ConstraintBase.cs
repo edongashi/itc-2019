@@ -40,7 +40,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
             return ClassesSet.Contains(@class);
         }
 
-        public abstract (double hardPenalty, int softPenalty) Evaluate(ISolution s);
+        public abstract (int hardPenalty, int softPenalty) Evaluate(ISolution s);
 
 
         public virtual Solution TryFix(Solution solution, Random random)

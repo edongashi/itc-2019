@@ -6,9 +6,9 @@
             int room,
             int time,
             int attendees,
-            double classCapacityPenalty,
-            double roomCapacityPenalty,
-            double roomUnavailablePenalty)
+            int classCapacityPenalty,
+            int roomCapacityPenalty,
+            int roomUnavailablePenalty)
         {
             Room = room;
             Time = time;
@@ -24,13 +24,13 @@
 
         public readonly int Attendees;
 
-        public readonly double ClassCapacityPenalty;
+        public readonly int ClassCapacityPenalty;
 
-        public readonly double RoomCapacityPenalty;
+        public readonly int RoomCapacityPenalty;
 
-        public readonly double RoomUnavailablePenalty;
+        public readonly int RoomUnavailablePenalty;
 
-        public ClassState WithAttendees(int attendees, double classCapacityPenalty, double roomCapacityPenalty)
+        public ClassState WithAttendees(int attendees, int classCapacityPenalty, int roomCapacityPenalty)
         {
             return new ClassState(
                 Room,
