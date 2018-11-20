@@ -416,8 +416,12 @@ namespace Timetabling.Common.ProblemModel
 
                 var roomId = -1;
                 var roomCapacityPenalty = 0d;
-                var classCapacityPenalty = 0d;
                 var roomUnavailablePenalty = 0d;
+                var classCapacityPenalty = state.Attendees > classData.Capacity
+                    ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) * Solution.CapacityOverflowRate
+                    : 0d;
+                hardPenalty += classCapacityPenalty;
+
                 if (state.Room >= 0)
                 {
                     var roomAssignment = classData.PossibleRooms[state.Room];
@@ -426,12 +430,8 @@ namespace Timetabling.Common.ProblemModel
                     roomCapacityPenalty = state.Attendees > room.Capacity
                         ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) * Solution.CapacityOverflowRate
                         : 0d;
-                    classCapacityPenalty = state.Attendees > classData.Capacity
-                        ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) * Solution.CapacityOverflowRate
-                        : 0d;
 
                     hardPenalty += roomCapacityPenalty;
-                    hardPenalty += classCapacityPenalty;
 
                     roomUnavailablePenalty = 0d;
                     foreach (var unavailableSchedule in room.UnavailableSchedules)
