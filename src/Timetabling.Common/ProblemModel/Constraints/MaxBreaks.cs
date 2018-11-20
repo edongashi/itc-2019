@@ -56,7 +56,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     }
 
                     mergedBlocks.Add(blocks[0]);
-                    for (var i = 1; i < mergedBlocks.Count; i++)
+                    for (var i = 1; i < count; i++)
                     {
                         var top = mergedBlocks.Peek();
                         var current = blocks[i];
@@ -82,7 +82,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             }
 
             return Required
-                ? ((double)totalOverflows / nrWeeks, 0)
+                ? (totalOverflows / nrWeeks, 0)
                 : (0d, Penalty * totalOverflows / nrWeeks);
         }
     }

@@ -51,12 +51,12 @@
 
         public bool Overlaps(Schedule other)
         {
-            if ((Weeks & other.Weeks) == 0)
+            if ((Weeks & other.Weeks) == 0u)
             {
                 return false;
             }
 
-            if ((Days & other.Days) == 0)
+            if ((Days & other.Days) == 0u)
             {
                 return false;
             }

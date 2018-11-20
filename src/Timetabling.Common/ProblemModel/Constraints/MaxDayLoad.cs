@@ -44,7 +44,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             }
 
             return Required
-                ? ((double)sum / nrWeeks, Penalty * sum / nrWeeks)
+                ? (sum / nrWeeks, Penalty * sum / nrWeeks)
                 : (0d, Penalty * sum / nrWeeks);
         }
     }

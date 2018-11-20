@@ -70,7 +70,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                         else if (end < current.End)
                         {
                             // We need to expand range.
-                            mergedBlocks[count - 1] = new Block(top.Start, current.End);
+                            mergedBlocks[mergedBlocks.Count - 1] = new Block(top.Start, current.End);
                         }
                     }
 
@@ -86,7 +86,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             }
 
             return Required
-                ? ((double)totalOverflows / nrWeeks, 0)
+                ? (totalOverflows / nrWeeks, 0)
                 : (0d, Penalty * totalOverflows / nrWeeks);
         }
     }
