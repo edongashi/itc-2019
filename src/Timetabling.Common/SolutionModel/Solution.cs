@@ -108,9 +108,9 @@ namespace Timetabling.Common.SolutionModel
         internal const double CapacityOverflowBase = 0.9d;
         internal const double CapacityOverflowRate = 0.1d;
 
-        private readonly ChunkedArray<ClassState> classStates;
-        private readonly ChunkedArray<StudentState> studentStates;
-        private readonly ChunkedArray<ConstraintState> constraintStates;
+        public readonly ChunkedArray<ClassState> ClassStates;
+        public readonly ChunkedArray<StudentState> StudentStates;
+        public readonly ChunkedArray<ConstraintState> ConstraintStates;
 
         internal Solution(
             Problem problem,
@@ -123,9 +123,9 @@ namespace Timetabling.Common.SolutionModel
             Problem = problem;
             HardPenalty = hardPenalty;
             SoftPenalty = softPenalty;
-            this.classStates = classStates;
-            this.studentStates = studentStates;
-            this.constraintStates = constraintStates;
+            ClassStates = classStates;
+            StudentStates = studentStates;
+            ConstraintStates = constraintStates;
         }
 
         public readonly Problem Problem;
@@ -195,7 +195,7 @@ namespace Timetabling.Common.SolutionModel
             for (var i = 0; i < Problem.Classes.Length; i++)
             {
                 var @class = Problem.Classes[i];
-                var state = classStates[i];
+                var state = ClassStates[i];
                 if (state.Room != -1)
                 {
                     roomPenalty += @class.PossibleRooms[state.Room].Penalty;
@@ -211,7 +211,7 @@ namespace Timetabling.Common.SolutionModel
             for (var i = 0; i < Problem.Classes.Length; i++)
             {
                 var @class = Problem.Classes[i];
-                var state = classStates[i];
+                var state = ClassStates[i];
                 timePenalty += @class.PossibleSchedules[state.Time].Penalty;
             }
 
@@ -232,10 +232,10 @@ namespace Timetabling.Common.SolutionModel
                 var (h, s) = constraint.Evaluate(this);
                 hard += h;
                 soft += s;
-                if (h > 0d)
-                {
-                    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
-                }
+                //if (h > 0d)
+                //{
+                //    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
+                //}
             }
 
             return (hard, soft);
@@ -243,12 +243,12 @@ namespace Timetabling.Common.SolutionModel
 
         public ScheduleAssignment GetTime(int @class)
         {
-            return Problem.Classes[@class].PossibleSchedules[classStates[@class].Time];
+            return Problem.Classes[@class].PossibleSchedules[ClassStates[@class].Time];
         }
 
         public Room GetRoom(int @class)
         {
-            var state = classStates[@class];
+            var state = ClassStates[@class];
             if (state.Room < 0)
             {
                 return null;
@@ -257,9 +257,20 @@ namespace Timetabling.Common.SolutionModel
             return Problem.Rooms[Problem.Classes[@class].PossibleRooms[state.Room].Id];
         }
 
+        public IEnumerable<int> GetStudentClasses(int student)
+        {
+            for (var i = 0; i < ClassStates.Length; i++)
+            {
+                if (HasClass(student, i))
+                {
+                    yield return i;
+                }
+            }
+        }
+
         public int GetRoomId(int @class)
         {
-            var room = classStates[@class].Room;
+            var room = ClassStates[@class].Room;
             if (room < 0)
             {
                 return -1;
@@ -285,7 +296,7 @@ namespace Timetabling.Common.SolutionModel
 
         public Solution WithRoom(int @class, int room)
         {
-            var classStates = this.classStates;
+            var classStates = this.ClassStates;
             if (@class < 0 || @class >= classStates.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(@class));
@@ -316,7 +327,7 @@ namespace Timetabling.Common.SolutionModel
             var self = With(new ClassOverride(@class, room, state.Time));
 
             // ReSharper disable once LocalVariableHidesMember
-            var constraintStates = this.constraintStates;
+            var constraintStates = this.ConstraintStates;
 
             // Eval Room constraints of C
             // ReSharper disable once ForCanBeConvertedToForeach
@@ -442,7 +453,7 @@ namespace Timetabling.Common.SolutionModel
             var studentOverrides = new List<Override<StudentState>>();
             var courses = Problem.Courses;
             var possibleStudents = courses[classData.CourseId].PossibleStudents;
-            var studentStates = this.studentStates;
+            var studentStates = this.StudentStates;
             var students = Problem.Students;
             var travelTimes = Problem.TravelTimes;
             var studentPenalty = Problem.StudentPenalty;
@@ -552,7 +563,7 @@ namespace Timetabling.Common.SolutionModel
 
         public Solution WithTime(int @class, int time)
         {
-            var classStates = this.classStates;
+            var classStates = this.ClassStates;
             if (@class < 0 || @class >= classStates.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(@class));
@@ -581,7 +592,7 @@ namespace Timetabling.Common.SolutionModel
             var self = With(new ClassOverride(@class, state.Room, time));
 
             // ReSharper disable once LocalVariableHidesMember
-            var constraintStates = this.constraintStates;
+            var constraintStates = this.ConstraintStates;
 
             // Eval Time constraints of C
             // ReSharper disable once ForCanBeConvertedToForeach
@@ -686,7 +697,7 @@ namespace Timetabling.Common.SolutionModel
             var studentOverrides = new List<Override<StudentState>>();
             var courses = Problem.Courses;
             var possibleStudents = courses[classData.CourseId].PossibleStudents;
-            var studentStates = this.studentStates;
+            var studentStates = this.StudentStates;
             var students = Problem.Students;
             var travelTimes = Problem.TravelTimes;
             var studentPenalty = Problem.StudentPenalty;
@@ -792,7 +803,7 @@ namespace Timetabling.Common.SolutionModel
 
         public Solution WithEnrollment(int student, int @class)
         {
-            var studentStates = this.studentStates;
+            var studentStates = this.StudentStates;
             var studentState = studentStates[student];
             var studentData = Problem.Students[student];
             var enrollmentConfigurations = studentData.EnrollmentConfigurations;
@@ -856,7 +867,7 @@ namespace Timetabling.Common.SolutionModel
             enrollmentStates[courseIndex] = newState;
 
             var hardPenalty = HardPenalty;
-            var classStates = this.classStates;
+            var classStates = this.ClassStates;
             var courses = Problem.Courses;
             var rooms = Problem.Rooms;
             var studentCourses = studentData.Courses;
@@ -964,6 +975,7 @@ namespace Timetabling.Common.SolutionModel
                     // Unenrolled class
                     var oldClass = subpart.Classes[oldClassIndex];
                     var oldClassId = oldClass.Id;
+                    //Console.WriteLine($"Unenrolled {oldClassId}");
                     var oldClassState = classStates[oldClassId];
                     var oldRoom = oldClassState.Room;
                     var oldAttendees = oldClassState.Attendees - 1;
@@ -994,7 +1006,7 @@ namespace Timetabling.Common.SolutionModel
                     hardPenalty += oldClassCapacityPenalty;
                 }
 
-                for (var i = 0; i < oldSubpartObjects.Length; i++)
+                for (var i = 0; i < newSubpartObjects.Length; i++)
                 {
                     var subpart = newSubpartObjects[i];
                     var newClassIndex = newSubparts[i];
@@ -1002,6 +1014,7 @@ namespace Timetabling.Common.SolutionModel
                     // Enrolled class
                     var newClass = subpart.Classes[newClassIndex];
                     var newClassId = newClass.Id;
+                    //Console.WriteLine($"Enrolled {newClassId}");
                     var newClassState = classStates[newClassId];
                     var newRoom = newClassState.Room;
                     var newAttendees = newClassState.Attendees + 1;
@@ -1148,12 +1161,12 @@ namespace Timetabling.Common.SolutionModel
                 softPenalty,
                 classStates.With(classUpdates),
                 studentStates.With(new Override<StudentState>(student, new StudentState(enrollmentStates, conflictingPairs))),
-                constraintStates);
+                ConstraintStates);
         }
 
         public bool HasClass(int student, int @class)
         {
-            var state = studentStates[student];
+            var state = StudentStates[student];
             var studentData = Problem.Students[student];
             if (studentData.EnrollmentConfigurations.TryGetValue(@class, out var config))
             {
@@ -1316,9 +1329,9 @@ namespace Timetabling.Common.SolutionModel
                 new XAttribute("institution", institution),
                 new XAttribute("country", country));
 
-            for (var i = 0; i < classStates.Length; i++)
+            for (var i = 0; i < ClassStates.Length; i++)
             {
-                var state = classStates[i];
+                var state = ClassStates[i];
                 var time = GetTime(i);
                 var classElement = new XElement("class",
                     new XAttribute("id", (i + 1).ToString()),
@@ -1331,7 +1344,7 @@ namespace Timetabling.Common.SolutionModel
                     classElement.Add(new XAttribute("room", room.Id + 1));
                 }
 
-                for (var s = 0; s < studentStates.Length; s++)
+                for (var s = 0; s < StudentStates.Length; s++)
                 {
                     if (HasClass(s, i))
                     {

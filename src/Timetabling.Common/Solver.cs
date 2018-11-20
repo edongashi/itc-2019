@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Timetabling.Common.ProblemModel;
@@ -32,7 +33,7 @@ namespace Timetabling.Common
                 random = new Random();
             }
 
-            Solution Mutate(Solution solution)
+            (Solution, bool) Mutate(Solution solution)
             {
                 var mutation = mutations[random.Next(mutations.Count)];
                 return mutation.Mutate(solution, random);
@@ -65,7 +66,7 @@ namespace Timetabling.Common
                 }
             }
 
-            Console.WriteLine($"[{s.Penalty}] Done...");
+            Console.WriteLine($"[{s.Penalty}] Done");
 
             Console.WriteLine("Assigning enrollments...");
             foreach (var variable in problem.StudentVariables.OrderBy(_ => random.Next()))
@@ -77,36 +78,7 @@ namespace Timetabling.Common
                 }
             }
 
-            Console.WriteLine($"[{s.Penalty}] Done...");
-
-            //var counter = 0;
-            //Console.WriteLine("Fixing constraints...");
-            //foreach (var constraint in problem.Constraints.OrderBy(_ => random.Next()))
-            //{
-            //    var sc = constraint.TryFix(s, random);
-            //    Console.WriteLine($"[{s.Penalty}] Constraint {++counter}/{problem.Constraints.Length}");
-            //    if (sc.Penalty < s.Penalty)
-            //    {
-            //        s = sc;
-            //    }
-            //}
-
-            //Console.WriteLine($"[{s.Penalty}] Done...");
-
-            //counter = 0;
-            //Console.WriteLine("Fixing required constraints...");
-            //var requiredConstraints = problem.Constraints.Where(c => c.Required).ToArray();
-            //foreach (var constraint in requiredConstraints.OrderBy(_ => random.Next()))
-            //{
-            //    var sc = constraint.TryFix(s, random);
-            //    Console.WriteLine($"[{s.Penalty}] Required constraint {++counter}/{requiredConstraints.Length}");
-            //    if (sc.Penalty < s.Penalty)
-            //    {
-            //        s = sc;
-            //    }
-            //}
-
-            //Console.WriteLine($"[{s.Penalty}] Done...");
+            Console.WriteLine($"[{s.Penalty}] Done");
 
             Console.WriteLine($"Initial solution penalty: {s.Penalty}");
 
@@ -122,22 +94,26 @@ namespace Timetabling.Common
                 }
 
                 t = t * TemperatureChange;
+                var temp = t;
 
-                var sc = Mutate(s);
+                var (sc, force) = Mutate(s);
+                if (force)
+                {
+                    temp += 0.1d;
+                }
+
                 if (sc.Penalty <= best.Penalty)
                 {
                     best = sc;
-                    //Console.WriteLine($"New best [{sc.Penalty}]");
                 }
 
                 if (sc.Penalty <= s.Penalty)
                 {
                     s = sc;
                 }
-                else if (Math.Exp((s.Penalty - sc.Penalty) / t) > random.NextDouble())
+                else if (Math.Exp((s.Penalty - sc.Penalty) / temp) > random.NextDouble())
                 {
                     s = sc;
-                    //Console.WriteLine($"Accepting worse solution [{sc.Penalty}]");
                 }
 
                 if (++i % 1000 == 0)
@@ -154,53 +130,37 @@ namespace Timetabling.Common
             var mutations = new List<IMutation>();
             if (problem.RoomVariables.Length > 0)
             {
-                //mutations.Add(new RoomClimb(2));
-                //mutations.Add(new RoomClimb(1));
-                //mutations.Add(new RoomClimb(5));
-                //mutations.Add(new RoomMutation(1));
             }
 
             if (problem.TimeVariables.Length > 0)
             {
-                //mutations.Add(new TimeClimb(2));
-                //mutations.Add(new TimeClimb(1));
-                //mutations.Add(new TimeClimb(5));
-                //mutations.Add(new TimeMutation(1));
             }
 
             if (problem.AllClassVariables.Length > 0)
             {
                 mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(10));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
-                //mutations.Add(new VariableMutation(1));
+                mutations.Add(new VariableMutation(1));
+                mutations.Add(new VariableMutation(1));
+                mutations.Add(new VariableMutation(1));
+                mutations.Add(new VariableMutation(1));
+                mutations.Add(new VariableMutation(1));
+                mutations.Add(new VariableMutation(2));
+                mutations.Add(new VariableMutation(10));
             }
 
             if (problem.StudentVariables.Length > 0)
             {
                 mutations.Add(new StudentMutation(1));
+                mutations.Add(new StudentMutation(1));
+                mutations.Add(new StudentMutation(1));
+                mutations.Add(new StudentMutation(1));
+                mutations.Add(new StudentMutation(2));
+                mutations.Add(new StudentMutation(10));
             }
 
             if (problem.Constraints.Length > 0)
             {
-                //mutations.Add(new ConstraintMutation(1));
+                mutations.Add(new ConstraintMutation(1));
             }
 
             return mutations;

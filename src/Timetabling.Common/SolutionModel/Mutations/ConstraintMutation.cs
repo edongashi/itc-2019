@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices.ComTypes;
 using Timetabling.Common.ProblemModel;
 
 namespace Timetabling.Common.SolutionModel.Mutations
@@ -12,30 +14,60 @@ namespace Timetabling.Common.SolutionModel.Mutations
             Max = max;
         }
 
-        public Solution Mutate(Solution solution, Random random)
+        public (Solution solution, bool forceAccept) Mutate(Solution solution, Random random)
         {
             var constraints = solution.Problem.Constraints;
             var count = 1 + random.Next(Max);
-            var result = solution;
             var timeVariables = solution.Problem.TimeVariablesSparse;
             var roomVariables = solution.Problem.RoomVariablesSparse;
+            var states = solution.ConstraintStates;
             for (var i = 0; i < count; i++)
             {
-                var constraint = constraints[random.Next(constraints.Length)];
-                var variables = timeVariables;
-                if (constraint.Type == ConstraintType.Room)
+                var seed = random.Next(states.Length);
+                var found = false;
+                for (var j = 0; j < states.Length; j++)
                 {
-                    variables = roomVariables;
+                    var id = (seed + j) % states.Length;
+                    if (states[id].HardPenalty <= 0d)
+                    {
+                        continue;
+                    }
+
+                    var constraint = constraints[id];
+                    var variables = timeVariables;
+                    if (constraint.Type == ConstraintType.Room)
+                    {
+                        variables = roomVariables;
+                    }
+
+                    foreach (var @class in constraint.Classes)
+                    {
+                        var variable = variables[@class];
+                        solution = solution.WithVariable(@class, random.Next(variable.MaxValue), variable.Type);
+                    }
+
+                    found = true;
+                    break;
                 }
 
-                foreach (var @class in constraint.Classes)
+                if (!found)
                 {
-                    var variable = variables[@class];
-                    solution = solution.WithVariable(@class, random.Next(variable.MaxValue), variable.Type);
+                    var constraint = constraints[seed];
+                    var variables = timeVariables;
+                    if (constraint.Type == ConstraintType.Room)
+                    {
+                        variables = roomVariables;
+                    }
+
+                    foreach (var @class in constraint.Classes)
+                    {
+                        var variable = variables[@class];
+                        solution = solution.WithVariable(@class, random.Next(variable.MaxValue), variable.Type);
+                    }
                 }
             }
 
-            return result;
+            return (solution, true);
         }
     }
 }

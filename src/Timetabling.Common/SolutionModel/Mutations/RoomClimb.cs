@@ -11,12 +11,12 @@ namespace Timetabling.Common.SolutionModel.Mutations
             Max = max;
         }
 
-        public Solution Mutate(Solution solution, Random random)
+        public (Solution solution, bool forceAccept) Mutate(Solution solution, Random random)
         {
-            return solution.RandomizedRoomClimb(
+            return (solution.RandomizedRoomClimb(
                 solution.Problem.PluckRoomClasses(1 + random.Next(Max), random),
                 random,
-                _ => true);
+                _ => true), false);
         }
     }
 }
