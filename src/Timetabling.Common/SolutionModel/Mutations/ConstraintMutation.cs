@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices.ComTypes;
 using Timetabling.Common.ProblemModel;
 
 namespace Timetabling.Common.SolutionModel.Mutations
@@ -14,7 +12,7 @@ namespace Timetabling.Common.SolutionModel.Mutations
             Max = max;
         }
 
-        public (Solution solution, bool forceAccept) Mutate(Solution solution, Random random)
+        public (Solution solution, double temperature) Mutate(Solution solution, Random random)
         {
             var constraints = solution.Problem.Constraints;
             var count = 1 + random.Next(Max);
@@ -34,16 +32,14 @@ namespace Timetabling.Common.SolutionModel.Mutations
                     }
 
                     var constraint = constraints[id];
-                    var variables = timeVariables;
-                    if (constraint.Type == ConstraintType.Room)
-                    {
-                        variables = roomVariables;
-                    }
-
                     foreach (var @class in constraint.Classes)
                     {
-                        var variable = variables[@class];
-                        solution = solution.WithVariable(@class, random.Next(variable.MaxValue), variable.Type);
+                        solution = solution.WithTime(@class, random.Next(timeVariables[@class].MaxValue));
+                        var roomVariable = roomVariables[@class];
+                        if (roomVariable.Type == VariableType.Room)
+                        {
+                            solution = solution.WithRoom(@class, random.Next(roomVariable.MaxValue));
+                        }
                     }
 
                     found = true;
@@ -67,7 +63,7 @@ namespace Timetabling.Common.SolutionModel.Mutations
                 }
             }
 
-            return (solution, true);
+            return (solution, 0d);
         }
     }
 }

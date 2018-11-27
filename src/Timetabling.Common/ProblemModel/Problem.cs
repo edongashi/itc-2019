@@ -212,6 +212,37 @@ namespace Timetabling.Common.ProblemModel
 
         public readonly Solution InitialSolution;
 
+        public class VariablePenalty
+        {
+            public VariablePenalty(int @class, int[] values)
+            {
+                Class = @class;
+                Values = values;
+            }
+
+            public readonly int Class;
+
+            public readonly int[] Values;
+        }
+
+        public (VariablePenalty[] timePenalties, VariablePenalty[] roomPenalties) CreatePenaltyMap()
+        {
+            var timePenalties = new VariablePenalty[Classes.Length];
+            var roomPenalties = new VariablePenalty[Classes.Length];
+
+            for (var i = 0; i < Classes.Length; i++)
+            {
+                timePenalties[i] = new VariablePenalty(i, new int[Classes[i].PossibleSchedules.Length]);
+            }
+
+            for (var i = 0; i < Classes.Length; i++)
+            {
+                roomPenalties[i] = new VariablePenalty(i, new int[Classes[i].PossibleRooms.Length]);
+            }
+
+            return (timePenalties, roomPenalties);
+        }
+
         public int[] PluckTimeClasses(int count, Random random)
         {
             var result = new List<int>(count);

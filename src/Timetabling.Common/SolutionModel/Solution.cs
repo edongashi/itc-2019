@@ -106,7 +106,7 @@ namespace Timetabling.Common.SolutionModel
             return new SolutionProxy(this, ov);
         }
 
-        internal const int CapacityOverflowBase = 1;
+        internal const int CapacityOverflowBase = 0;
         internal const int CapacityOverflowRate = int.MaxValue;
 
         public readonly ChunkedArray<ClassState> ClassStates;
@@ -165,13 +165,14 @@ namespace Timetabling.Common.SolutionModel
             Console.WriteLine($"Class capacity penalty: {ClassCapacityPenalty()}");
             Console.WriteLine($"Room capacity penalty: {RoomCapacityPenalty()}");
             Console.WriteLine($"Room unavailable penalty: {RoomUnavailablePenalty()}");
+            Console.WriteLine("=== Constraints ===");
+            Console.WriteLine($"Failures: Hard: {FailedHardConstraints()}, Soft: {FailedSoftConstraints()}");
             Console.WriteLine($"=== Soft Penalty {SoftPenalty} ===");
             Console.WriteLine($"Time penalty: {TimePenalty()}");
             Console.WriteLine($"Room penalty: {RoomPenalty()}");
             Console.WriteLine($"Dist penalty: {DistributionPenalty()}");
             Console.WriteLine($"Student penalty: {StudentPenalty()}");
-            Console.WriteLine("=== Constraints ===");
-            Console.WriteLine($"Failures: Hard: {FailedHardConstraints()}, Soft: {FailedSoftConstraints()}");
+            Console.WriteLine("=== Total Penalty ===");
             Console.WriteLine($"Instance penalty: Hard: {HardPenalty}, Soft: {SoftPenalty}, Normalized: {Penalty}");
             Console.WriteLine($"Computed penalty: Hard: {h}, Soft: {s}, Normalized: {h + s / (s + 1d)}");
             Console.WriteLine("========================================");
@@ -389,10 +390,10 @@ namespace Timetabling.Common.SolutionModel
                 var (h, s) = constraint.Evaluate(this);
                 hard += h;
                 soft += s;
-                //if (h > 0d)
-                //{
-                //    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
-                //}
+                if (h > 0)
+                {
+                    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
+                }
             }
 
             return (hard, soft);

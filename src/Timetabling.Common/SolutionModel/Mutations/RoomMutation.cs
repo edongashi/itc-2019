@@ -11,7 +11,7 @@ namespace Timetabling.Common.SolutionModel.Mutations
             Max = max;
         }
 
-        public (Solution solution, bool forceAccept) Mutate(Solution solution, Random random)
+        public (Solution solution, double temperature) Mutate(Solution solution, Random random)
         {
             var vars = solution.Problem.RoomVariables;
             var count = 1 + random.Next(Max);
@@ -22,7 +22,7 @@ namespace Timetabling.Common.SolutionModel.Mutations
                 result = result.WithRoom(var.Class, random.Next(var.MaxValue));
             }
 
-            return (result, false);
+            return (result, 0d);
         }
     }
 }

@@ -4,6 +4,6 @@ namespace Timetabling.Common.SolutionModel.Mutations
 {
     public interface IMutation
     {
-        (Solution solution, bool forceAccept) Mutate(Solution solution, Random random);
+        (Solution solution, double temperature) Mutate(Solution solution, Random random);
     }
 }

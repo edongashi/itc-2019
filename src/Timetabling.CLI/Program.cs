@@ -22,7 +22,7 @@ namespace Timetabling.CLI
                 problem = ProblemParser.FromXml(stream);
             }
 
-            var solver = new Solver();
+            var solver = new SimulatedAnnealingSolver();
             var cancellation = new CancellationTokenSource();
 
             // ReSharper disable once MethodSupportsCancellation

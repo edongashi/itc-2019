@@ -8,11 +8,11 @@ using Timetabling.Common.SolutionModel.Mutations;
 
 namespace Timetabling.Common
 {
-    public class Solver
+    public class SimulatedAnnealingSolver
     {
         private static readonly object RandomLock = new object();
 
-        public double MaxTemperature = 0.5d;
+        public double MaxTemperature = 0.2d;
 
         public double TemperatureChange = 0.999999d;
 
@@ -32,14 +32,14 @@ namespace Timetabling.Common
                 random = new Random();
             }
 
-            (Solution, bool) Mutate(Solution solution)
+            (Solution, double) Mutate(Solution solution)
             {
                 var mutation = mutations[random.Next(mutations.Count)];
                 return mutation.Mutate(solution, random);
             }
 
             var s = problem.InitialSolution;
-            Console.WriteLine($"=== Empty Solution ===");
+            Console.WriteLine("=== Empty Solution ===");
             s.PrintStats();
 
             Console.WriteLine("Assigning class variables...");
@@ -83,13 +83,8 @@ namespace Timetabling.Common
                 }
 
                 t = t * TemperatureChange;
-                var temp = t;
-
-                var (sc, force) = Mutate(s);
-                if (force)
-                {
-                    temp += 0.1d;
-                }
+                var (sc, dt) = Mutate(s);
+                var temp = t + dt;
 
                 if (sc.HardPenalty < best.HardPenalty || sc.HardPenalty == best.HardPenalty && sc.SoftPenalty < best.SoftPenalty)
                 {
@@ -112,7 +107,7 @@ namespace Timetabling.Common
 
                 if (i % 10000 == 0)
                 {
-                    best.PrintStats();
+                    s.PrintStats();
                 }
             }
 
