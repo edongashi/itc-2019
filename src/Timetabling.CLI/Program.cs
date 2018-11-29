@@ -31,7 +31,7 @@ namespace Timetabling.CLI
                 while (true)
                 {
                     var input = Console.ReadKey(true);
-                    if (input.Key == ConsoleKey.C)
+                    if (input.Key == ConsoleKey.Q)
                     {
                         cancellation.Cancel();
                         break;
@@ -39,14 +39,21 @@ namespace Timetabling.CLI
                 }
             });
 
-            var solution = solver.Solve(problem, cancellation.Token);
+            var initial = problem.InitialSolution;
+            if (args.Length > 1)
+            {
+                var arg = args[1];
+                initial = ProblemParser.FromXml(problem, arg);
+            }
+
+            var solution = solver.Solve(problem, initial, cancellation.Token);
             Console.WriteLine("=== Final Solution ===");
             solution.PrintStats();
             solution
                 .Log("Serializing solution...")
                 .Serialize()
                 .Log("Saving solution...")
-                .Save("solution.xml");
+                .Save("solution_" + (problem.Name ?? "problem") + ".xml");
             Console.WriteLine("Solution saved");
             Console.Write("Press any key to continue . . . ");
             Console.ReadKey(true);

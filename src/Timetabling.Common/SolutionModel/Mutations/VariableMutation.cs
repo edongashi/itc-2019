@@ -1,28 +1,55 @@
 ﻿using System;
+using Timetabling.Common.ProblemModel;
 
 namespace Timetabling.Common.SolutionModel.Mutations
 {
     public class VariableMutation : IMutation
     {
-        public readonly int Max;
-
         public VariableMutation(int max)
         {
             Max = max;
         }
 
-        public (Solution solution, double temperature) Mutate(Solution solution, Random random)
+        public readonly int Max;
+
+        public (Solution solution, double penaltyDelta) Mutate(
+            Solution solution,
+            Random random,
+            int penalizations,
+            VariablePenalty[] timePenalties,
+            VariablePenalty[] roomPenalties)
         {
             var vars = solution.Problem.AllClassVariables;
             var count = 1 + random.Next(Max);
-            var result = solution;
+            var delta = 0d;
             for (var i = 0; i < count; i++)
             {
                 var var = vars[random.Next(vars.Length)];
-                result = result.WithVariable(var.Class, random.Next(var.MaxValue), var.Type);
+                var val = random.Next(var.MaxValue);
+                // ReSharper disable once ConvertIfStatementToSwitchStatement
+                if (var.Type == VariableType.Time)
+                {
+                    if (penalizations != 0)
+                    {
+                        var penalties = timePenalties[var.Class].Values;
+                        delta += penalties[val] - penalties[solution.ClassStates[var.Class].Time];
+                    }
+
+                    solution = solution.WithTime(var.Class, val);
+                }
+                else
+                {
+                    if (penalizations != 0)
+                    {
+                        var penalties = roomPenalties[var.Class].Values;
+                        delta += penalties[val] - penalties[solution.ClassStates[var.Class].Room];
+                    }
+
+                    solution = solution.WithRoom(var.Class, val);
+                }
             }
 
-            return (result, 0d);
+            return (solution, delta);
         }
     }
 }

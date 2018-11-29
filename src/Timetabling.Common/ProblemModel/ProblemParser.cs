@@ -3,16 +3,55 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using Timetabling.Common.ProblemModel.Constraints;
+using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel
 {
     public static class ProblemParser
     {
+        public static Problem FromXml(string path)
+        {
+            using (var file = File.OpenRead(path))
+            {
+                return FromXml(file);
+            }
+        }
+
+        public static Solution FromXml(Problem problem, string path)
+        {
+            using (var file = File.OpenRead(path))
+            {
+                return FromXml(problem, file);
+            }
+        }
+
         public static Problem FromXml(Stream stream)
         {
             var element = XDocument.Load(stream).Root;
             return ToProblem(element);
+        }
+
+        public static Solution FromXml(Problem problem, Stream stream)
+        {
+            var solution = problem.InitialSolution;
+            var element = XDocument.Load(stream).Root;
+            foreach (var @class in element.Elements("class"))
+            {
+                var id = @class.RequiredId();
+                var classData = problem.Classes[id];
+                var start = @class.RequiredInteger("start");
+                var days = @class.RequiredBinary("days");
+                var weeks = @class.RequiredBinary("weeks");
+                var room = @class.OptionalInteger("room", 0) - 1;
+                solution = solution.WithTime(id, classData.FindSchedule(start, days, weeks));
+                if (room >= 0)
+                {
+                    solution = solution.WithRoom(id, classData.FindRoom(room));
+                }
+            }
+
+            return solution;
         }
 
         public static Problem ToProblem(XElement element)

@@ -44,7 +44,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             }
 
             return Required
-                ? (sum / nrWeeks, Penalty * sum / nrWeeks)
+                ? (sum > 0 ? Math.Max(1, sum / nrWeeks) : 0, 0)
                 : (0, Penalty * sum / nrWeeks);
         }
     }

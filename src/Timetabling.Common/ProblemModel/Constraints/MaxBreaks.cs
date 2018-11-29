@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Timetabling.Common.ProblemModel.Constraints.Internal;
 using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
@@ -60,17 +61,17 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     {
                         var top = mergedBlocks.Peek();
                         var current = blocks[i];
-                        var end = top.End + S;
-                        if (end < current.Start)
+                        var topEnd = top.End + S;
+                        if (topEnd < current.Start)
                         {
                             // No overlap.
                             mergedBlocks.Add(current);
                         }
                         // Overlap
-                        else if (end < current.End)
+                        else
                         {
                             // We need to expand range.
-                            mergedBlocks[mergedBlocks.Count - 1] = new Block(top.Start, current.End);
+                            mergedBlocks[mergedBlocks.Count - 1] = new Block(top.Start, Math.Max(top.End, current.End));
                         }
                     }
 
@@ -82,7 +83,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
             }
 
             return Required
-                ? (totalOverflows / nrWeeks, 0)
+                ? (totalOverflows > 0 ? Math.Max(1, totalOverflows / nrWeeks) : 0, 0)
                 : (0, Penalty * totalOverflows / nrWeeks);
         }
     }

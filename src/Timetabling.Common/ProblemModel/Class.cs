@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel
 {
@@ -32,6 +34,16 @@ namespace Timetabling.Common.ProblemModel
         public readonly RoomAssignment[] PossibleRooms;
 
         public readonly ScheduleAssignment[] PossibleSchedules;
+
+        public int FindRoom(int id)
+        {
+            return PossibleRooms.IndexOf(r => r.Id == id);
+        }
+
+        public int FindSchedule(int start, uint days, uint weeks)
+        {
+            return PossibleSchedules.IndexOf(s => s.Start == start && s.Days == days && s.Weeks == weeks);
+        }
     }
 
     public class ClassData : Class

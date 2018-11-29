@@ -1,29 +1,21 @@
 ﻿using System;
+using Timetabling.Common.ProblemModel;
 
 namespace Timetabling.Common.SolutionModel.Mutations
 {
     public class StudentMutation : IMutation
     {
-        public readonly int Max;
-
-        public StudentMutation(int max)
-        {
-            Max = max;
-        }
-
-        public (Solution solution, double temperature) Mutate(Solution solution, Random random)
+        public (Solution solution, double penaltyDelta) Mutate(
+            Solution solution,
+            Random random,
+            int penalizations,
+            VariablePenalty[] timePenalties,
+            VariablePenalty[] roomPenalties)
         {
             var vars = solution.Problem.StudentVariables;
-            var count = 1 + random.Next(Max);
-            var result = solution;
-            for (var i = 0; i < count; i++)
-            {
-                var var = vars[random.Next(vars.Length)];
-                var classes = var.LooseValues;
-                result = result.WithEnrollment(var.Student, classes[random.Next(classes.Length)]);
-            }
-
-            return (result, 0d);
+            var var = vars[random.Next(vars.Length)];
+            var classes = var.LooseValues;
+            return (solution.WithEnrollment(var.Student, classes[random.Next(classes.Length)]), 0d);
         }
     }
 }

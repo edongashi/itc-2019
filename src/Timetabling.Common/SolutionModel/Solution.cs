@@ -139,6 +139,8 @@ namespace Timetabling.Common.SolutionModel
 
         public double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
 
+        public double SearchPenalty => HardPenalty > 0 ? HardPenalty + 0.5d : SoftPenalty / (SoftPenalty + 1d);
+
         public (int hardPenalty, int softPenalty) CalculatePenalty()
         {
             var (distHard, distSoft) = CalculateDistributionPenalty();
