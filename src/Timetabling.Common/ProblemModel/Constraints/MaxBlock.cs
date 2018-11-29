@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Timetabling.Common.ProblemModel.Constraints.Internal;
-using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
-    public class MaxBlock : ConstraintBase
+    public class MaxBlock : TimeConstraint
     {
         public MaxBlock(int id, int m, int s, bool required, int penalty, int[] classes)
             : base(id, required, penalty, classes)
@@ -19,11 +18,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public readonly int S;
 
-        public override ConstraintType Type => ConstraintType.Time;
-
-        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
+        protected override (int hardPenalty, int softPenalty) Evaluate(Problem problem, Schedule[] configuration)
         {
-            var problem = s.Problem;
             var nrWeeks = problem.NumberOfWeeks;
             var nrDays = problem.DaysPerWeek;
             var totalOverflows = 0;
@@ -40,7 +36,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var i = 0; i < Classes.Length; i++)
                     {
-                        var ci = s.GetTime(Classes[i]);
+                        var ci = configuration[i];
                         if ((ci.Days & (1u << d)) == 0u
                             || (ci.Weeks & (1u << w)) == 0u)
                         {

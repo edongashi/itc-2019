@@ -6,6 +6,7 @@ using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel.Constraints.Internal
 {
+    [Obsolete]
     public abstract class ConstraintBase : IConstraint
     {
         public abstract ConstraintType Type { get; }
@@ -41,7 +42,6 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
         }
 
         public abstract (int hardPenalty, int softPenalty) Evaluate(ISolution s);
-
 
         public virtual Solution TryFix(Solution solution, Random random)
         {

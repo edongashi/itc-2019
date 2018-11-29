@@ -1,10 +1,9 @@
 ﻿using System;
 using Timetabling.Common.ProblemModel.Constraints.Internal;
-using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
-    public class MaxDayLoad : ConstraintBase
+    public class MaxDayLoad : TimeConstraint
     {
         public MaxDayLoad(int id, int s, bool required, int penalty, int[] classes)
             : base(id, required, penalty, classes)
@@ -14,11 +13,8 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public readonly int S;
 
-        public override ConstraintType Type => ConstraintType.Time;
-
-        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
+        protected override (int hardPenalty, int softPenalty) Evaluate(Problem problem, Schedule[] configuration)
         {
-            var problem = s.Problem;
             var nrWeeks = problem.NumberOfWeeks;
             var nrDays = problem.DaysPerWeek;
             var sum = 0;
@@ -31,7 +27,7 @@ namespace Timetabling.Common.ProblemModel.Constraints
                     // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var i = 0; i < Classes.Length; i++)
                     {
-                        var ci = s.GetTime(Classes[i]);
+                        var ci = configuration[i];
                         if ((ci.Days & (1u << d)) != 0u
                             && (ci.Weeks & (1u << w)) != 0u)
                         {

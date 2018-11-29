@@ -3,29 +3,22 @@ using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
-    public class SameAttendees : ConstraintBase
+    public class SameAttendees : CommonConstraint
     {
         public SameAttendees(int id, bool required, int penalty, int[] classes)
             : base(id, required, penalty, classes)
         {
         }
 
-        public override ConstraintType Type => ConstraintType.Common;
-
-        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
+        protected override (int hardPenalty, int softPenalty) Evaluate(Problem problem, (Room room, Schedule schedule)[] configuration)
         {
             var penalty = 0;
-            var problem = s.Problem;
             for (var i = 0; i < Classes.Length - 1; i++)
             {
-                var classi = Classes[i];
-                var ci = s.GetTime(classi);
-                var ri = s.GetRoom(classi);
+                var (ri, ci) = configuration[i];
                 for (var j = i + 1; j < Classes.Length; j++)
                 {
-                    var classj = Classes[j];
-                    var cj = s.GetTime(classj);
-                    var rj = s.GetRoom(classj);
+                    var (rj, cj) = configuration[j];
                     var travel = ri != null && rj != null
                         ? problem.TravelTimes[ri.Id, rj.Id]
                         : 0;

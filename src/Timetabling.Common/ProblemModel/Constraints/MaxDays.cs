@@ -1,10 +1,9 @@
 ﻿using Timetabling.Common.ProblemModel.Constraints.Internal;
-using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
-    public class MaxDays : ConstraintBase
+    public class MaxDays : TimeConstraint
     {
         public MaxDays(int id, int d, bool required, int penalty, int[] classes)
             : base(id, required, penalty, classes)
@@ -14,14 +13,12 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public readonly int D;
 
-        public override ConstraintType Type => ConstraintType.Time;
-
-        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
+        protected override (int hardPenalty, int softPenalty) Evaluate(Problem problem, Schedule[] configuration)
         {
             var acc = 0u;
             for (var i = 0; i < Classes.Length; i++)
             {
-                acc = acc | s.GetTime(Classes[i]).Days;
+                acc = acc | configuration[i].Days;
             }
 
             var count = Utilities.BitCount(acc);

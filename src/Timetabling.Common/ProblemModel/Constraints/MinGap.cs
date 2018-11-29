@@ -1,9 +1,8 @@
 ﻿using Timetabling.Common.ProblemModel.Constraints.Internal;
-using Timetabling.Common.SolutionModel;
 
 namespace Timetabling.Common.ProblemModel.Constraints
 {
-    public class MinGap : ConstraintBase
+    public class MinGap : TimeConstraint
     {
         public MinGap(int id, int g, bool required, int penalty, int[] classes)
             : base(id, required, penalty, classes)
@@ -13,17 +12,15 @@ namespace Timetabling.Common.ProblemModel.Constraints
 
         public readonly int G;
 
-        public override ConstraintType Type => ConstraintType.Time;
-
-        public override (int hardPenalty, int softPenalty) Evaluate(ISolution s)
+        protected override (int hardPenalty, int softPenalty) Evaluate(Problem problem, Schedule[] configuration)
         {
             var penalty = 0;
             for (var i = 0; i < Classes.Length - 1; i++)
             {
-                var ci = s.GetTime(Classes[i]);
+                var ci = configuration[i];
                 for (var j = i + 1; j < Classes.Length; j++)
                 {
-                    var cj = s.GetTime(Classes[j]);
+                    var cj = configuration[j];
                     if ((ci.Days & cj.Days) == 0u
                         || (ci.Weeks & cj.Weeks) == 0u
                         || ci.End + G <= cj.Start

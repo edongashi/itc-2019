@@ -14,9 +14,9 @@ namespace Timetabling.Common
 
         public double MaxTemperature = 0.2d;
 
-        public double MaxFeasibleTemperature = 1E-20d;
+        public double MaxFeasibleTemperature = 1E-10d;
 
-        public double TemperatureChange = 0.9999999d;
+        public double TemperatureChange = 0.999999d;
 
         public int PenalizeTimeout = 100_000;
 
