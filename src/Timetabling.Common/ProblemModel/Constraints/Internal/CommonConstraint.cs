@@ -20,6 +20,8 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
 
         public readonly int Penalty;
 
+        protected bool SuppressCaching = false;
+
         protected CommonConstraint(int id, bool required, int penalty, int[] classes)
         {
             Id = id;
@@ -151,7 +153,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
                 return lastResult;
             }
 
-            if (Classes.Length <= 10)
+            if (SuppressCaching)
             {
                 var newResult = Evaluate(s.Problem, buffer);
                 lastResult = newResult;

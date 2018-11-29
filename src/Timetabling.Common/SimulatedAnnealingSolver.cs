@@ -12,11 +12,11 @@ namespace Timetabling.Common
     {
         private static readonly object RandomLock = new object();
 
-        public double MaxTemperature = 0.2d;
+        public double MaxTemperature = 0.3d;
 
         public double MaxFeasibleTemperature = 1E-10d;
 
-        public double TemperatureChange = 0.999999d;
+        public double TemperatureChange = 0.9999999d;
 
         public int PenalizeTimeout = 100_000;
 
