@@ -12,11 +12,11 @@ namespace Timetabling.Common
     {
         private static readonly object RandomLock = new object();
 
-        public double MaxTemperature = 0.3d;
+        public double MaxTemperature = 20d;
 
         public double MaxFeasibleTemperature = 1E-10d;
 
-        public double TemperatureChange = 0.9999999d;
+        public double TemperatureChange = 0.99999d;
 
         public int PenalizeTimeout = 100_000;
 
@@ -103,18 +103,82 @@ namespace Timetabling.Common
             void Penalize(Solution solution)
             {
                 penalizations++;
+
                 var states = solution.ClassStates;
+                var extraPenalty = 0d;
+                void PenalizeTime(int @class)
+                {
+                    var cls = problem.Classes[@class];
+                    var state = states[@class];
+                    if (cls.TimeConstraints.Length > 1)
+                    {
+                        var val = timePenalties[@class].Values[state.Time];
+                        timePenalties[@class].Values[state.Time] = (val <= 0d ? 0.005d : 1.1d * val + 0.01d) + extraPenalty;
+                    }
+                }
+
+                void PenalizeRoom(int @class)
+                {
+                    var cls = problem.Classes[@class];
+                    var state = states[@class];
+
+                    if (cls.RoomConstraints.Length > 1)
+                    {
+                        var val = roomPenalties[@class].Values[state.Room];
+                        roomPenalties[@class].Values[state.Room] = (val <= 0d ? 0.005d : 1.1d * val + 0.01d) + extraPenalty;
+                    }
+                }
+
+                var constraintStates = solution
+                    .ConstraintStates
+                    .Select((state, index) => (state, index))
+                    .Where(pair => pair.state.HardPenalty > 0)
+                    .ToList();
+                var conflictingClasses = solution.ConflictingClasses();
+                var unavailableClasses = solution.RoomUnavailableClasses();
+                if (constraintStates.Count > 0 || conflictingClasses.Count > 0 || unavailableClasses.Count > 0)
+                {
+                    extraPenalty = 0.25d;
+                    foreach (var (_, index) in constraintStates)
+                    {
+                        var constraint = problem.Constraints[index];
+                        switch (constraint.Type)
+                        {
+                            case ConstraintType.Common:
+                                constraint.Classes.ForEach(PenalizeTime);
+                                constraint.Classes.ForEach(PenalizeRoom);
+                                break;
+                            case ConstraintType.Time:
+                                constraint.Classes.ForEach(PenalizeTime);
+                                break;
+                            case ConstraintType.Room:
+                                constraint.Classes.ForEach(PenalizeRoom);
+                                break;
+                        }
+                    }
+
+                    foreach (var cl in conflictingClasses)
+                    {
+                        PenalizeTime(cl);
+                        PenalizeRoom(cl);
+                    }
+
+                    foreach (var cl in unavailableClasses)
+                    {
+                        PenalizeTime(cl);
+                        PenalizeRoom(cl);
+                    }
+
+                    return;
+                }
+
                 var length = states.Length;
                 //var timePenaltiesCandidates = new double[length];
                 //var roomPenaltiesCandidates = new double[length];
                 for (var j = 0; j < length; j++)
                 {
-                    var state = states[j];
-                    timePenalties[j].Values[state.Time] += 0.001d;
-                    if (state.Room >= 0)
-                    {
-                        roomPenalties[j].Values[state.Room] += 0.001d;
-                    }
+                    PenalizeTime(j);
+                    PenalizeRoom(j);
                     //timePenaltiesCandidates[j] = timePenalties[j].Values[state.Time];
                     //roomPenaltiesCandidates[j] = double.PositiveInfinity;
                     //if (state.Room >= 0)
@@ -215,6 +279,15 @@ namespace Timetabling.Common
                 return mutation.Mutate(solution, random, penalizations, timePenalties, roomPenalties);
             }
 
+            var focus = new HashSet<int>();
+            foreach (var constraint in problem.HardConstraints())
+            {
+                if (constraint.Classes.Count() > 20)
+                {
+                    focus.Add(constraint.Id);
+                }
+            }
+
             while (true)
             {
                 if (cancellation.IsCancellationRequested)
@@ -251,7 +324,7 @@ namespace Timetabling.Common
                         Penalize(s);
                         sAdjustment = Adjustment(s);
                         cAdjustment = Adjustment(sc);
-                        t = Math.Min((t + 0.05d) * 2d, 0.15d) + (penalizations - 1) * 0.05d;
+                        t = 2d;// + (penalizations - 1) * 0.2d;
                     }
                 }
 
@@ -263,7 +336,7 @@ namespace Timetabling.Common
 
                 var sPenalty = s.SearchPenalty + sAdjustment;
                 var cPenalty = sc.SearchPenalty + cAdjustment;
-                
+
                 if (s.HardPenalty == 0 && sc.HardPenalty == 0)
                 {
                     var sSoft = s.SoftPenalty + sAdjustment;
@@ -285,6 +358,24 @@ namespace Timetabling.Common
                 {
                     s = sc;
                     sAdjustment = cAdjustment;
+                }
+                else if (s.HardPenalty > 0 && focus.Count > 0)
+                {
+                    var stotal = 0;
+                    var sctotal = 0;
+                    var sConstraintStates = s.ConstraintStates;
+                    var scConstraintStates = sc.ConstraintStates;
+                    foreach (var constraint in focus)
+                    {
+                        stotal += sConstraintStates[constraint].HardPenalty;
+                        sctotal += scConstraintStates[constraint].HardPenalty;
+                    }
+
+                    if (sctotal < stotal)
+                    {
+                        s = sc;
+                        sAdjustment = cAdjustment;
+                    }
                 }
 
                 if (++i % 1_000 == 0)
@@ -320,8 +411,7 @@ namespace Timetabling.Common
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
-                mutations.Add(new VariableMutation(2));
-                mutations.Add(new VariableMutation(3));
+                mutations.Add(new VariableMutation(6));
             }
 
             if (problem.Constraints.Length > 0)
@@ -340,8 +430,7 @@ namespace Timetabling.Common
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
-                mutations.Add(new VariableMutation(2));
-                mutations.Add(new VariableMutation(3));
+                mutations.Add(new VariableMutation(6));
             }
 
             if (problem.Constraints.Length > 0)
@@ -370,8 +459,7 @@ namespace Timetabling.Common
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
-                mutations.Add(new VariableMutation(2));
-                mutations.Add(new VariableMutation(3));
+                mutations.Add(new VariableMutation(6));
             }
 
             if (problem.StudentVariables.Length > 0)

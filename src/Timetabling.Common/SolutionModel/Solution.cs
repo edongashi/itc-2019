@@ -169,6 +169,7 @@ namespace Timetabling.Common.SolutionModel
             Console.WriteLine($"Room unavailable penalty: {RoomUnavailablePenalty()}");
             Console.WriteLine("=== Constraints ===");
             Console.WriteLine($"Failures: Hard: {FailedHardConstraints()}, Soft: {FailedSoftConstraints()}");
+            PrintFailedConstraints();
             Console.WriteLine($"=== Soft Penalty {SoftPenalty} ===");
             Console.WriteLine($"Time penalty: {TimePenalty()}");
             Console.WriteLine($"Room penalty: {RoomPenalty()}");
@@ -203,6 +204,31 @@ namespace Timetabling.Common.SolutionModel
             }
 
             return penalty;
+        }
+
+        public HashSet<int> RoomUnavailableClasses()
+        {
+            var conflicts = new HashSet<int>();
+            var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var (ci, ti, ri) = classes[i];
+                if (ri != null)
+                {
+                    var room = Problem.Rooms[ri.Id];
+                    foreach (var schedule in room.UnavailableSchedules)
+                    {
+                        if (schedule.Overlaps(ti))
+                        {
+                            conflicts.Add(i);
+                            Debug.Assert(ci.RoomUnavailablePenalty > 0);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return conflicts;
         }
 
         public int RoomCapacityPenalty()
@@ -273,6 +299,43 @@ namespace Timetabling.Common.SolutionModel
                     if (ti.Overlaps(tj, travelTime))
                     {
                         conflicts++;
+                    }
+                }
+            }
+
+            return conflicts;
+        }
+
+        public HashSet<int> ConflictingClasses()
+        {
+            var conflicts = new HashSet<int>();
+            var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
+            for (var i = 0; i < classes.Length; i++)
+            {
+                var (ci, ti, ri) = classes[i];
+                if (ri == null)
+                {
+                    continue;
+                }
+
+                for (var j = i + 1; j < classes.Length; j++)
+                {
+                    var (cj, tj, rj) = classes[j];
+                    if (rj == null)
+                    {
+                        continue;
+                    }
+
+                    if (ri.Id != rj.Id)
+                    {
+                        continue;
+                    }
+
+                    var travelTime = Problem.TravelTimes[ri.Id, rj.Id];
+                    if (ti.Overlaps(tj, travelTime))
+                    {
+                        conflicts.Add(i);
+                        conflicts.Add(j);
                     }
                 }
             }
@@ -383,6 +446,18 @@ namespace Timetabling.Common.SolutionModel
             return CalculateDistributionPenalty().softPenalty;
         }
 
+        private void PrintFailedConstraints()
+        {
+            foreach (var constraint in Problem.Constraints)
+            {
+                var (h, _) = constraint.Evaluate(this);
+                if (h > 0)
+                {
+                    Console.WriteLine($"{constraint.GetType().Name}({constraint.Difficulty})->{h} [{string.Join(",", constraint.Classes.Select(c => c + 1))}]");
+                }
+            }
+        }
+
         private (int hardPenalty, int softPenalty) CalculateDistributionPenalty()
         {
             var hard = 0;
@@ -392,10 +467,6 @@ namespace Timetabling.Common.SolutionModel
                 var (h, s) = constraint.Evaluate(this);
                 hard += h;
                 soft += s;
-                if (h > 0)
-                {
-                    Console.WriteLine($"{constraint.GetType().Name}->{h}/{s}");
-                }
             }
 
             return (hard, soft);

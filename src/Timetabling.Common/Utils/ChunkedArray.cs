@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 
 namespace Timetabling.Common.Utils
 {
-    public class ChunkedArray<T>
+    public class ChunkedArray<T> : IEnumerable<T>
     {
         private const int MaxOverrides = 32;
 
@@ -121,6 +122,19 @@ namespace Timetabling.Common.Utils
             }
 
             return new ChunkedArray<T>(newChunks, chunkSize, new List<Override<T>>(), Length);
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            for (var i = 0; i < Length; i++)
+            {
+                yield return this[i];
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

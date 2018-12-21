@@ -18,15 +18,22 @@ namespace Timetabling.Common.Utils
             }
         }
 
-        private readonly int maxCapacity = 0;
+        private readonly int maxCapacity;
         private readonly Dictionary<TKey, Node<TValue, TKey>> lruCache;
-        private Node<TValue, TKey> head = null;
-        private Node<TValue, TKey> tail = null;
+        private Node<TValue, TKey> head;
+        private Node<TValue, TKey> tail;
 
         public LruCache(int maxCapacity)
         {
             this.maxCapacity = maxCapacity;
             lruCache = new Dictionary<TKey, Node<TValue, TKey>>();
+        }
+
+        public void Clear()
+        {
+            lruCache.Clear();
+            head = null;
+            tail = null;
         }
 
         public void Add(TKey key, TValue value)

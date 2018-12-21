@@ -8,7 +8,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
 {
     public abstract class CommonConstraint : IConstraint
     {
-        private const int CacheCapacity = 16384;
+        private const int CacheCapacity = 4096;
 
         protected readonly int[] Classes;
 
@@ -19,6 +19,16 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
         public readonly bool Required;
 
         public readonly int Penalty;
+
+        public int Difficulty
+        {
+            get => difficulty;
+            set
+            {
+                difficulty = value;
+                cache.Clear();
+            }
+        }
 
         protected bool SuppressCaching = false;
 
@@ -31,6 +41,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
             ClassesSet = new HashSet<int>(classes);
             buffer = new (Room room, Schedule schedule)[Classes.Length];
             cache = new LruCache<CacheItem, (int hardPenalty, int softPenalty)>(CacheCapacity);
+            lastResult = (-1, 0);
         }
 
         int IConstraint.Id => Id;
@@ -50,6 +61,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
 
         private readonly (Room room, Schedule schedule)[] buffer;
         private readonly LruCache<CacheItem, (int hardPenalty, int softPenalty)> cache;
+        private int difficulty;
 
         private class CacheItem : IEquatable<CacheItem>
         {
@@ -148,7 +160,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
                 }
             }
 
-            if (equals)
+            if (equals && lastResult.hardPenalty >= 0)
             {
                 return lastResult;
             }
@@ -156,6 +168,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
             if (SuppressCaching)
             {
                 var newResult = Evaluate(s.Problem, buffer);
+                newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
                 lastResult = newResult;
                 return newResult;
             }
@@ -169,6 +182,7 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
             else
             {
                 var newResult = Evaluate(s.Problem, buffer);
+                newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
                 cache.Add(cached.Clone(), newResult);
                 lastResult = newResult;
                 return newResult;

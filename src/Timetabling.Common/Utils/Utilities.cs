@@ -4,6 +4,34 @@ namespace Timetabling.Common.Utils
 {
     public static class Utilities
     {
+        private const int WordBits = 32;
+
+        public static uint FloorLog2(uint x)
+        {
+            x |= (x >> 1);
+            x |= (x >> 2);
+            x |= (x >> 4);
+            x |= (x >> 8);
+            x |= (x >> 16);
+
+            return (uint)(BitCount(x) - 1);
+        }
+
+        public static uint CeilingLog2(uint x)
+        {
+            int y = (int)(x & (x - 1));
+
+            y |= -y;
+            y >>= (WordBits - 1);
+            x |= (x >> 1);
+            x |= (x >> 2);
+            x |= (x >> 4);
+            x |= (x >> 8);
+            x |= (x >> 16);
+
+            return (uint)(BitCount(x) - 1 - y);
+        }
+
         public static int BitCount(uint v)
         {
             var c = v - ((v >> 1) & 0x55555555u);

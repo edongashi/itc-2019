@@ -21,6 +21,8 @@ namespace Timetabling.Common.ProblemModel
 
         IEnumerable<int> Classes { get; }
 
+        int Difficulty { get; set; }
+
         bool InvolvesClass(int @class);
 
         (int hardPenalty, int softPenalty) Evaluate(ISolution s);

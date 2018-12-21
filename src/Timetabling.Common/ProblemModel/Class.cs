@@ -64,8 +64,14 @@ namespace Timetabling.Common.ProblemModel
             CommonConstraints = commonConstraints.ToArray();
             TimeConstraints = timeConstraints.ToArray();
             RoomConstraints = roomConstraints.ToArray();
+            AllConstraints = CommonConstraints
+                .Union(TimeConstraints)
+                .Union(RoomConstraints)
+                .Distinct()
+                .ToArray();
             Children = new HashSet<int>(children ?? Enumerable.Empty<int>());
             HasChildren = Children.Count > 0;
+            ConstraintCount = CommonConstraints.Length + TimeConstraints.Length + RoomConstraints.Length;
         }
 
         public readonly IConstraint[] CommonConstraints;
@@ -74,8 +80,27 @@ namespace Timetabling.Common.ProblemModel
 
         public readonly IConstraint[] RoomConstraints;
 
+        public readonly IConstraint[] AllConstraints;
+
+        public readonly int ConstraintCount;
+
         public readonly HashSet<int> Children;
 
         public readonly bool HasChildren;
+
+        public IEnumerable<IConstraint> ConstraintsRelatedTo(ConstraintType type)
+        {
+            switch (type)
+            {
+                case ConstraintType.Common:
+                    return AllConstraints;
+                case ConstraintType.Time:
+                    return TimeConstraints.Union(CommonConstraints);
+                case ConstraintType.Room:
+                    return RoomConstraints.Union(CommonConstraints);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
+        }
     }
 }

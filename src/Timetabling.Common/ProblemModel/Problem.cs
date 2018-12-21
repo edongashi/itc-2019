@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Timetabling.Common.ProblemModel.Constraints;
 using Timetabling.Common.SolutionModel;
 using Timetabling.Common.Utils;
 
@@ -167,6 +168,18 @@ namespace Timetabling.Common.ProblemModel
             RoomVariablesSparse = roomSparse;
             AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
             StudentVariables = GetStudentVariables();
+
+            foreach (var constraint in constraints)
+            {
+                constraint.Difficulty = constraint
+                    .Classes
+                    .SelectMany(id => Classes[id].ConstraintsRelatedTo(constraint.Type))
+                    .Distinct()
+                    .Count()
+                    .Transform(x => (int)Utilities.FloorLog2(
+                        (uint)(constraint.Classes.Count() + x)));
+            }
+
             InitialSolution = CreateInitialSolution();
         }
 
@@ -211,6 +224,8 @@ namespace Timetabling.Common.ProblemModel
         public readonly CourseVariable[] StudentVariables;
 
         public readonly Solution InitialSolution;
+
+        public IEnumerable<IConstraint> HardConstraints() => Constraints.Where(c => c.Required);
 
         public (VariablePenalty[] timePenalties, VariablePenalty[] roomPenalties) CreatePenaltyMap()
         {

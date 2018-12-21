@@ -28,6 +28,8 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
 
         public readonly bool Required;
 
+        public int Difficulty { get; set; }
+
         int IConstraint.Id => Id;
 
         bool IConstraint.Required => Required;
