@@ -330,5 +330,5 @@ ASALocalRun/
 .mfractor/
 
 paper/paper.*
-paper/*.tex
+paper/__latexindent_temp.*
 !paper/paper.tex
