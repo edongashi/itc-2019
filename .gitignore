@@ -328,3 +328,7 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
+paper/paper.*
+paper/*.tex
+!paper/paper.tex
