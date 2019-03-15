@@ -169,16 +169,16 @@ namespace Timetabling.Common.ProblemModel
             AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
             StudentVariables = GetStudentVariables();
 
-            foreach (var constraint in constraints)
-            {
-                constraint.Difficulty = constraint
-                    .Classes
-                    .SelectMany(id => Classes[id].ConstraintsRelatedTo(constraint.Type))
-                    .Distinct()
-                    .Count()
-                    .Transform(x => (int)Utilities.FloorLog2(
-                        (uint)(constraint.Classes.Count() + x)));
-            }
+            //foreach (var constraint in constraints)
+            //{
+            //    constraint.Difficulty = constraint
+            //        .Classes
+            //        .SelectMany(id => Classes[id].ConstraintsRelatedTo(constraint.Type))
+            //        .Distinct()
+            //        .Count()
+            //        .Transform(x => (int)Utilities.FloorLog2(
+            //            (uint)(constraint.Classes.Count() + x)));
+            //}
 
             InitialSolution = CreateInitialSolution();
         }

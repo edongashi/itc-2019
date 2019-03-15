@@ -52,6 +52,11 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
                 : Optimize(solution, random);
         }
 
+        public virtual IEnumerable<int> EvaluateConflictingClasses(ISolution solution)
+        {
+            return Classes;
+        }
+
         protected virtual Solution FixRequired(Solution solution, Random random)
         {
             return Optimize(solution, random);

@@ -189,6 +189,11 @@ namespace Timetabling.Common.ProblemModel.Constraints.Internal
             }
         }
 
+        public virtual IEnumerable<int> EvaluateConflictingClasses(ISolution solution)
+        {
+            return Classes;
+        }
+
         protected abstract (int hardPenalty, int softPenalty) Evaluate(Problem problem, (Room room, Schedule schedule)[] configuration);
 
         public Solution TryFix(Solution solution, Random random)

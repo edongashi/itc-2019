@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace Timetabling.Common.Utils
 {
-    internal static class XmlUtilities
+    public static class XmlUtilities
     {
         public static string RequiredAttribute(this XElement element, string name)
         {

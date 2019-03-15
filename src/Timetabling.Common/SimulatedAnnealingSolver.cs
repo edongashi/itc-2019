@@ -12,13 +12,13 @@ namespace Timetabling.Common
     {
         private static readonly object RandomLock = new object();
 
-        public double MaxTemperature = 20d;
+        public double MaxTemperature = 0.25d;
 
-        public double MaxFeasibleTemperature = 1E-10d;
+        public double MaxFeasibleTemperature = 1E-8d;
 
-        public double TemperatureChange = 0.99999d;
+        public double TemperatureChange = 0.999995d;
 
-        public int PenalizeTimeout = 100_000;
+        public int PenalizeTimeout = 200_000;
 
         public Solution Solve(Problem problem, Solution initialSolution, CancellationToken cancellation)
         {
@@ -142,17 +142,21 @@ namespace Timetabling.Common
                     foreach (var (_, index) in constraintStates)
                     {
                         var constraint = problem.Constraints[index];
+                        var classes = constraint.EvaluateConflictingClasses(solution);
                         switch (constraint.Type)
                         {
                             case ConstraintType.Common:
-                                constraint.Classes.ForEach(PenalizeTime);
-                                constraint.Classes.ForEach(PenalizeRoom);
+                                classes.ForEach(c =>
+                                {
+                                    PenalizeTime(c);
+                                    PenalizeRoom(c);
+                                });
                                 break;
                             case ConstraintType.Time:
-                                constraint.Classes.ForEach(PenalizeTime);
+                                classes.ForEach(PenalizeTime);
                                 break;
                             case ConstraintType.Room:
-                                constraint.Classes.ForEach(PenalizeRoom);
+                                classes.ForEach(PenalizeRoom);
                                 break;
                         }
                     }
@@ -324,7 +328,7 @@ namespace Timetabling.Common
                         Penalize(s);
                         sAdjustment = Adjustment(s);
                         cAdjustment = Adjustment(sc);
-                        t = 2d;// + (penalizations - 1) * 0.2d;
+                        t = 0.25d;// + (penalizations - 1) * 0.2d;
                     }
                 }
 
@@ -345,24 +349,10 @@ namespace Timetabling.Common
                     cPenalty = cSoft / (1d + cSoft);
                 }
 
-                if (cPenalty <= sPenalty)
+                var stotal = 0;
+                var sctotal = 0;
+                if (s.HardPenalty > 0 && focus.Count > 0)
                 {
-                    s = sc;
-                    sAdjustment = cAdjustment;
-                    if (cPenalty < sPenalty)
-                    {
-                        timeout = 0;
-                    }
-                }
-                else if (Math.Exp((sPenalty - cPenalty) / t) > random.NextDouble())
-                {
-                    s = sc;
-                    sAdjustment = cAdjustment;
-                }
-                else if (s.HardPenalty > 0 && focus.Count > 0)
-                {
-                    var stotal = 0;
-                    var sctotal = 0;
                     var sConstraintStates = s.ConstraintStates;
                     var scConstraintStates = sc.ConstraintStates;
                     foreach (var constraint in focus)
@@ -376,6 +366,33 @@ namespace Timetabling.Common
                         s = sc;
                         sAdjustment = cAdjustment;
                     }
+                }
+
+                if (sctotal < stotal)
+                {
+                    s = sc;
+                    sAdjustment = cAdjustment;
+                    if (cPenalty < sPenalty)
+                    {
+                        timeout = 0;
+                    }
+                }
+                else if (cPenalty <= sPenalty)
+                {
+                    if (sctotal == stotal || random.NextDouble() >= 0.3d)
+                    {
+                        s = sc;
+                        sAdjustment = cAdjustment;
+                        if (cPenalty < sPenalty)
+                        {
+                            timeout = 0;
+                        }
+                    }
+                }
+                else if (Math.Exp((sPenalty - cPenalty) / t) > random.NextDouble())
+                {
+                    s = sc;
+                    sAdjustment = cAdjustment;
                 }
 
                 if (++i % 1_000 == 0)
@@ -414,6 +431,11 @@ namespace Timetabling.Common
                 mutations.Add(new VariableMutation(6));
             }
 
+            if (problem.StudentVariables.Length > 0)
+            {
+                mutations.Add(new StudentMutation());
+            }
+
             if (problem.Constraints.Length > 0)
             {
 
@@ -431,6 +453,11 @@ namespace Timetabling.Common
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(1));
                 mutations.Add(new VariableMutation(6));
+            }
+
+            if (problem.StudentVariables.Length > 0)
+            {
+                mutations.Add(new StudentMutation());
             }
 
             if (problem.Constraints.Length > 0)

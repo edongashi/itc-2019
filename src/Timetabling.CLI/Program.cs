@@ -2,6 +2,8 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
+using Newtonsoft.Json;
 using Timetabling.Common;
 using Timetabling.Common.ProblemModel;
 
@@ -9,10 +11,54 @@ namespace Timetabling.CLI
 {
     public static class Program
     {
+        private static void MapForward(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return;
+            }
+
+            var xmlfile = args[1];
+            var filename = Path.GetFileNameWithoutExtension(xmlfile);
+
+            var (instance, mapping) = MappingUtilities.MapForward(XElement.Load(xmlfile));
+            instance.Save($"{filename}.fmap.xml");
+            File.WriteAllText($"{filename}.fmap.json", JsonConvert.SerializeObject(mapping));
+        }
+
+        private static void MapBackwards(string[] args)
+        {
+            if (args.Length < 3)
+            {
+                return;
+            }
+
+            var xmlfile = args[1];
+            var filename = Path.GetFileNameWithoutExtension(xmlfile);
+
+            var jsonfile = args[2];
+            var mapping = JsonConvert.DeserializeObject<Mapping>(File.ReadAllText(jsonfile));
+
+            var solution = MappingUtilities.MapBackwards(XElement.Load(xmlfile), mapping);
+            solution.Save($"{filename}.bmap.xml");
+        }
+
         public static void Main(string[] args)
         {
             if (args == null || args.Length == 0)
             {
+                return;
+            }
+
+            if (args[0] == "--fmap")
+            {
+                MapForward(args);
+                return;
+            }
+
+            if (args[0] == "--bmap")
+            {
+                MapBackwards(args);
                 return;
             }
 

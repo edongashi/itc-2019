@@ -27,6 +27,8 @@ namespace Timetabling.Common.ProblemModel
 
         (int hardPenalty, int softPenalty) Evaluate(ISolution s);
 
+        IEnumerable<int> EvaluateConflictingClasses(ISolution s);
+
         Solution TryFix(Solution solution, Random random);
     }
 }
