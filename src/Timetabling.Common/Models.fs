@@ -1,9 +1,9 @@
 namespace Timetabling.Common
 
 // Time
-type WeeksPattern = WeeksPattern of uint32
+type WeeksPattern = WeeksPattern of bool list
 
-type DaysPattern = DaysPattern of uint32
+type DaysPattern = DaysPattern of bool list
 
 type Time =
   { Start : int

@@ -6,6 +6,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Monad.fs" />
     <Compile Include="Models.fs" />
+    <Compile Include="Schedule.fs" />
     <Compile Include="Parse.fs" />
   </ItemGroup>
 </Project>

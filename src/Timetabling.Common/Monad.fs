@@ -24,7 +24,7 @@ type ResultBuilder() =
   member this.ReturnFrom(m : Result<_, _>) = m
   member this.Bind(m, f) = Result.bind f m
   member this.Bind((m, error) : Option<'T> * 'E, f) =
-    m |> Utils.errorOfOption error |> Result.bind f
+    m |> Utils.resultOfOption error |> Result.bind f
 
   member this.Zero() = None
   member this.Combine(m, f) = Result.bind f m
