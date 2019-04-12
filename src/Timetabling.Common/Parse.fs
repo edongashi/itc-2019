@@ -2,7 +2,6 @@ module Timetabling.Common.Parse
 
 open System
 open System.Xml.Linq
-open Utils
 
 // Types
 type ParseError =
@@ -32,7 +31,7 @@ module private ParseUtils =
     |> Option.sequenceList
 
   let element prop (xml : XElement) =
-    xml.Element(ofString prop) |> optionOfNullable
+    xml.Element(ofString prop) |> Option.ofObj
 
   let attr prop (xml : XElement) =
     let attr = ofString prop |> xml.Attribute
