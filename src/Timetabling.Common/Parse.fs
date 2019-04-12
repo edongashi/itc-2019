@@ -10,7 +10,7 @@ type ParseError =
   | InvalidFormat of string
 
 type XmlParseError =
-  { Node : XElement
+  { Element : XElement
     Error : ParseError }
 
 // Utils
@@ -52,7 +52,7 @@ module private ParseUtils =
   let getter f xml =
     fun prop ->
       xml |> f prop,
-      { Node = xml
+      { Element = xml
         Error = prop |> attributeError }
 
   let numGetter xml = getter numAttr xml
