@@ -28,3 +28,5 @@ module Result =
     match value with
     | Some v -> Ok v
     | None -> Error error
+
+  let discard value = value |> Result.map ignore

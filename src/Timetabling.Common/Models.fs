@@ -16,7 +16,7 @@ type RoomId = RoomId of int
 
 type TravelTime = TravelTime of int
 
-type RoomTravelTime = RoomId * TravelTime
+type RoomTravelTime = RoomTravelTime of RoomId * TravelTime
 
 type UnavailableTime = UnavailableTime of Time
 

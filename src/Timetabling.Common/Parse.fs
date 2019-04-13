@@ -7,6 +7,7 @@ open System.Xml.Linq
 type ParseError =
   | InvalidAttribute of string
   | InvalidFormat of string
+  | InvalidName
 
 type XmlParseError =
   { Element : XElement
@@ -40,6 +41,8 @@ module private ParseUtils =
     | attr when attr.Value |> String.IsNullOrEmpty -> None
     | attr -> Some attr.Value
 
+  let tagName (xml : XElement) = xml.Name.LocalName
+
   let numAttr prop = attr prop >=> parseInt
   let binaryAttr prop = attr prop >=> parseBinary
 
@@ -55,10 +58,33 @@ module private ParseUtils =
         Error = prop |> attributeError }
 
   let numGetter xml = getter numAttr xml
+
   let binaryGetter xml = getter binaryAttr xml
+
+  let havingName name xml =
+    if tagName xml = name then Ok xml
+    else Error { Element = xml
+                 Error = InvalidName }
+
+  let ensureName name xml =
+    xml |> havingName name |> Result.discard
 
 // Parsers
 open ParseUtils
+
+let private schedule xml =
+  let getNum = numGetter xml
+  let getBinary = binaryGetter xml
+  result {
+    let! start = getNum "start"
+    let! length = getNum "length"
+    let! weeks = getBinary "weeks"
+    let! days = getBinary "days"
+    return { Start = start
+             Length = length
+             Weeks = WeeksPattern weeks
+             Days = DaysPattern days }
+  }
 
 let optimization xml =
   let getNum = numGetter xml
@@ -73,16 +99,14 @@ let optimization xml =
              Student = student }
   }
 
-let time xml =
+let travel xml =
   let getNum = numGetter xml
-  let getBinary = binaryGetter xml
   result {
-    let! start = getNum "start"
-    let! length = getNum "length"
-    let! weeks = getBinary "weeks"
-    let! days = getBinary "days"
-    return { Start = start
-             Length = length
-             Weeks = WeeksPattern weeks
-             Days = DaysPattern days }
+    do! xml |> ensureName "travel"
+    let! room = getNum "room"
+    let! value = getNum "value"
+    return RoomTravelTime(RoomId room, TravelTime value)
   }
+
+let unavailable xml =
+  xml |> havingName "unavailable" >>= schedule
