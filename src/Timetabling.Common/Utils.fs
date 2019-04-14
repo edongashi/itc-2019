@@ -12,6 +12,10 @@ module Option =
 
   let sequenceList ls = traverseList id ls
 
+  let traverseSeq f ls = ls |> List.ofSeq |> traverseList f
+  let sequenceSeq ls = ls |> List.ofSeq |> sequenceList
+
+
 module Result =
   let inline private (>>=) r f = Result.bind f r
 
@@ -23,6 +27,9 @@ module Result =
     List.foldBack folder ls (rtn List.empty)
 
   let sequenceList ls = traverseList id ls
+
+  let traverseSeq f ls = ls |> List.ofSeq |> traverseList f
+  let sequenceSeq ls = ls |> List.ofSeq |> sequenceList
 
   let ofOption error value =
     match value with

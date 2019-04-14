@@ -14,7 +14,7 @@ let inline (>>=) (x : '``Monad<'T>``) (f : 'T -> '``Monad<'U>``) : '``Monad<'U>`
 let inline (>=>) (f : 'T -> '``Monad<'U>``) (g : 'U -> '``Monad<'V>``) (x : 'T) : '``Monad<'V>`` = Bind.Invoke (f x) g
 
 type OptionBuilder() =
-  member this.Bind(v, f) = v |> Result.bind f
+  member this.Bind(v, f) = v |> Option.bind f
   member this.Return v = Some v
   member this.ReturnFrom o = o
   member this.Zero() = None

@@ -59,10 +59,11 @@ type Class =
     Limit : ClassLimit }
 
 // Subpart
-type SubpartId = Subpartid of int
+type SubpartId = SubpartId of int
 
 type Subpart =
-  { Id : SubpartId }
+  { Id : SubpartId
+    Classes : Class list }
 
 // Config
 type ConfigId = ConfigId of int
