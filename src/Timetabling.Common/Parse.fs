@@ -6,23 +6,23 @@ open System.Xml.Linq
 // Types
 type ParseError =
   | InvalidAttribute of string
-  | InvalidFormat of string
   | InvalidName
+  | MissingChildElement of string
 
 type XmlParseError =
   { Element : XElement
     Error : ParseError }
 
 // Utils
-module private ParseUtils =
+module private XmlUtils =
   let private nameOfString name = name |> XName.op_Implicit
 
-  let private tryParseInt str =
+  let tryParseInt str =
     str |> Int32.TryParse |> function
     | true, num -> Some num
     | false, _ -> None
 
-  let private tryParseBinary (str : string) =
+  let tryParseBinary (str : string) =
     str.ToCharArray()
     |> List.ofArray
     |> Option.traverseList (function
@@ -30,40 +30,46 @@ module private ParseUtils =
          | '0' -> Some false
          | _ -> None)
 
-  let private makeAttrError prop =
-    prop
-    |> sprintf "Missing or invalid attribute '%s'."
-    |> InvalidAttribute
-
-  let private makeError prop xml =
+  let makeAttrError prop xml =
     { Element = xml
-      Error = prop |> makeAttrError }
+      Error = InvalidAttribute prop }
 
-  let element prop (xml : XElement) =
-    xml.Element(nameOfString prop) |> Option.ofObj
+  let tryElement name (xml : XElement) =
+    xml.Element(nameOfString name) |> Option.ofObj
 
-  let attr prop (xml : XElement) =
-    let attr = nameOfString prop |> xml.Attribute
-    match attr with
-    | null -> None
-    | attr when attr.Value |> String.IsNullOrEmpty -> None
-    | attr -> Some attr.Value
+  let element name xml =
+    xml
+    |> tryElement name
+    |> Result.ofOption { Element = xml
+                         Error = MissingChildElement name }
 
   let children name (xml : XElement) =
     nameOfString name |> xml.Elements
 
   let tagName (xml : XElement) = xml.Name.LocalName
 
+  let tryAttr prop (xml : XElement) =
+    let attr = nameOfString prop |> xml.Attribute
+    match attr with
+    | null -> None
+    | attr when attr.Value |> String.IsNullOrEmpty -> None
+    | attr -> Some attr.Value
+
+  let attr prop xml =
+    xml
+    |> tryAttr prop
+    |> Result.ofOption (makeAttrError prop xml)
+
   let private attrWith f =
     fun prop xml ->
       xml
-      |> attr prop
+      |> tryAttr prop
       >>= f
-      |> Result.ofOption (makeError prop xml)
+      |> Result.ofOption (makeAttrError prop xml)
 
-  let tryNumAttr prop xml = xml |> attr prop >>= tryParseInt
+  let tryNumAttr prop xml = xml |> tryAttr prop >>= tryParseInt
 
-  let tryBinaryAttr prop xml = xml |> attr prop >>= tryParseBinary
+  let tryBinaryAttr prop xml = xml |> tryAttr prop >>= tryParseBinary
 
   let numAttr = attrWith tryParseInt
 
@@ -83,7 +89,7 @@ module private ParseUtils =
     |> Result.traverseSeq f
 
 // Parsers
-open ParseUtils
+open XmlUtils
 
 let private schedule f xml =
   result {
@@ -216,4 +222,138 @@ let courses xml =
     do! xml |> ensureName "courses"
     let! courses = traverse "course" course
     return courses
+  }
+
+let distributionClass xml =
+  result {
+    do! xml |> ensureName "class"
+    let! id = xml |> numAttr "id"
+    return ClassId id
+  }
+
+let requirement xml =
+  xml |> tryAttr "required" |> function
+  | Some "true" -> Ok Required
+  | Some _ -> Error(makeAttrError "required" xml)
+  | None -> xml
+            |> tryNumAttr "penalty"
+            |> Option.map Penalized
+            |> Result.ofOption (makeAttrError "penalty" xml)
+
+let distributionType (str : string) =
+  let splitParts (str : string) =
+    let index = str.IndexOf("(")
+    if index > 0 then
+      let name = str.Substring(0, index)
+      str
+        .Substring(index + 1)
+        .Split(',')
+      |> Seq.map tryParseInt
+      |> Option.sequenceSeq
+      |> Option.map (fun args -> name, args)
+    else Some(str, [])
+
+  option {
+    let! name, args = splitParts str
+    let len = List.length args
+    let at index = args |> List.item index
+    return! match name, len with
+    | "SameStart", 0 -> Some SameStart
+    | "SameTime", 0 -> Some SameTime
+    | "DifferentTime", 0 -> Some DifferentTime
+    | "SameDays", 0 -> Some SameDays
+    | "DifferentDays", 0 -> Some DifferentDays
+    | "SameWeeks", 0 -> Some SameWeeks
+    | "DifferentWeeks", 0 -> Some DifferentWeeks
+    | "SameRoom", 0 -> Some SameRoom
+    | "DifferentRoom", 0 -> Some DifferentRoom
+    | "Overlap", 0 -> Some Overlap
+    | "NotOverlap", 0 -> Some NotOverlap
+    | "SameAttendees", 0 -> Some SameAttendees
+    | "Precedence", 0 -> Some Precedence
+    | "WorkDay", 1 -> WorkDay(at 0) |> Some
+    | "MinGap", 1 -> MinGap(at 0) |> Some
+    | "MaxDays", 1 -> MaxDays(at 0) |> Some
+    | "MaxDayLoad", 1 -> MaxDayLoad(at 0) |> Some
+    | "MaxBreaks", 2 -> MaxBreaks(at 0, at 1) |> Some
+    | "MaxBlock", 2 -> MaxBlock(at 0, at 1) |> Some
+    | _ -> None
+  }
+
+let distribution xml =
+  let traverse name f = xml |> traverseChildren name f
+  result {
+    do! xml |> ensureName "distribution"
+    let! typeString = xml |> attr "type"
+    let! distributionType =
+      typeString
+      |> distributionType
+      |> Result.ofOption (makeAttrError "type" xml)
+    let! classes = traverse "class" distributionClass
+    let! requirement = xml |> requirement
+    return { Type = distributionType
+             Requirement = requirement
+             Classes = classes }
+  }
+
+let distributions xml =
+  let traverse name f = xml |> traverseChildren name f
+  result {
+    do! xml |> ensureName "distributions"
+    let! distributions = traverse "distribution" distribution
+    return distributions
+  }
+
+let studentCourse xml =
+  result {
+    do! xml |> ensureName "course"
+    let! id = xml |> numAttr "id"
+    return CourseId id
+  }
+
+let student xml =
+  let traverse name f = xml |> traverseChildren name f
+  result {
+    do! xml |> ensureName "student"
+    let! id = xml |> numAttr "id"
+    let! courses = traverse "course" studentCourse
+    return { Id = StudentId id
+             Courses = courses }
+  }
+
+let students xml =
+  let traverse name f = xml |> traverseChildren name f
+  result {
+    do! xml |> ensureName "students"
+    let! students = traverse "student" student
+    return students
+  }
+
+let problem xml =
+  let traverse name f = xml |> traverseChildren name f
+  let maybeMap name f =
+    xml
+    |> tryElement name
+    |> Option.map f
+    |> Option.defaultValue (Ok [])
+
+  result {
+    let name = xml |> tryAttr "name" |> Option.defaultValue "<unknown>"
+    let! numberDays = xml |> numAttr "nrDays"
+    let! slotsPerDay = xml |> numAttr "slotsPerDay"
+    let! numberWeeks = xml |> numAttr "nrWeeks"
+    let! optimization = xml |> element "optimization" >>= optimization
+    let! rooms = xml |> element "rooms" >>= rooms
+    let! courses = xml |> element "courses" >>= courses
+    let! distributions = maybeMap "distributions" distributions
+    let! students = maybeMap "students" students
+    return { Name = name
+             NumberDays = numberDays
+             NumberWeeks = numberWeeks
+             SlotsPerDay = slotsPerDay
+             Optimization = optimization
+             Rooms = rooms
+             Courses = courses
+             Distributions = distributions
+             Students = students }
   }

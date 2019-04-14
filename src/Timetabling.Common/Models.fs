@@ -126,7 +126,8 @@ type Optimization =
 
 // Problem
 type Problem =
-  { NumberDays : int
+  { Name : string
+    NumberDays : int
     NumberWeeks : int
     SlotsPerDay : int
     Optimization : Optimization
