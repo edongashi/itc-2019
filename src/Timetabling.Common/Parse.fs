@@ -17,7 +17,7 @@ type XmlParseError =
 module private XmlUtils =
   let private nameOfString name = name |> XName.op_Implicit
 
-  let tryParseInt str =
+  let tryParseInt (str : string) =
     str |> Int32.TryParse |> function
     | true, num -> Some num
     | false, _ -> None
@@ -246,6 +246,7 @@ let distributionType (str : string) =
     if index > 0 then
       let name = str.Substring(0, index)
       str
+        .Substring(0, str.Length - 1)
         .Substring(index + 1)
         .Split(',')
       |> Seq.map tryParseInt
@@ -258,26 +259,26 @@ let distributionType (str : string) =
     let len = List.length args
     let at index = args |> List.item index
     return! match name, len with
-    | "SameStart", 0 -> Some SameStart
-    | "SameTime", 0 -> Some SameTime
-    | "DifferentTime", 0 -> Some DifferentTime
-    | "SameDays", 0 -> Some SameDays
-    | "DifferentDays", 0 -> Some DifferentDays
-    | "SameWeeks", 0 -> Some SameWeeks
-    | "DifferentWeeks", 0 -> Some DifferentWeeks
-    | "SameRoom", 0 -> Some SameRoom
-    | "DifferentRoom", 0 -> Some DifferentRoom
-    | "Overlap", 0 -> Some Overlap
-    | "NotOverlap", 0 -> Some NotOverlap
-    | "SameAttendees", 0 -> Some SameAttendees
-    | "Precedence", 0 -> Some Precedence
-    | "WorkDay", 1 -> WorkDay(at 0) |> Some
-    | "MinGap", 1 -> MinGap(at 0) |> Some
-    | "MaxDays", 1 -> MaxDays(at 0) |> Some
-    | "MaxDayLoad", 1 -> MaxDayLoad(at 0) |> Some
-    | "MaxBreaks", 2 -> MaxBreaks(at 0, at 1) |> Some
-    | "MaxBlock", 2 -> MaxBlock(at 0, at 1) |> Some
-    | _ -> None
+            | "SameStart", 0 -> Some SameStart
+            | "SameTime", 0 -> Some SameTime
+            | "DifferentTime", 0 -> Some DifferentTime
+            | "SameDays", 0 -> Some SameDays
+            | "DifferentDays", 0 -> Some DifferentDays
+            | "SameWeeks", 0 -> Some SameWeeks
+            | "DifferentWeeks", 0 -> Some DifferentWeeks
+            | "SameRoom", 0 -> Some SameRoom
+            | "DifferentRoom", 0 -> Some DifferentRoom
+            | "Overlap", 0 -> Some Overlap
+            | "NotOverlap", 0 -> Some NotOverlap
+            | "SameAttendees", 0 -> Some SameAttendees
+            | "Precedence", 0 -> Some Precedence
+            | "WorkDay", 1 -> WorkDay(at 0) |> Some
+            | "MinGap", 1 -> MinGap(at 0) |> Some
+            | "MaxDays", 1 -> MaxDays(at 0) |> Some
+            | "MaxDayLoad", 1 -> MaxDayLoad(at 0) |> Some
+            | "MaxBreaks", 2 -> MaxBreaks(at 0, at 1) |> Some
+            | "MaxBlock", 2 -> MaxBlock(at 0, at 1) |> Some
+            | _ -> None
   }
 
 let distribution xml =
