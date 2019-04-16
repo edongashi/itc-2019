@@ -1,7 +1,7 @@
 namespace Timetabling.Common
 
 module Option =
-  let inline private (>>=) r f = Option.bind f r
+  let inline private (>>=) x f = Option.bind f x
 
   let rtn v = Some v
 
@@ -17,7 +17,7 @@ module Option =
 
 
 module Result =
-  let inline private (>>=) r f = Result.bind f r
+  let inline private (>>=) x f = Result.bind f x
 
   let rtn v = Ok v
 
