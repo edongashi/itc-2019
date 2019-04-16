@@ -13,4 +13,8 @@
     <ProjectReference Include="..\Timetabling.Common\Timetabling.Common.fsproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="argu" Version="5.2.0" />
+  </ItemGroup>
+
 </Project>

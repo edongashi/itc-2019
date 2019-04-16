@@ -1,1 +1,0 @@
-module Timetabling.Common.Schedule
