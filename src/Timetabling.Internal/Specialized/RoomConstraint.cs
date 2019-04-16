@@ -164,18 +164,21 @@ namespace Timetabling.Internal.Specialized
             }
 
             var cached = new CacheItem(buffer);
-            if (cache.TryGet(cached, out var result))
+            lock (cache)
             {
-                lastResult = result;
-                return result;
-            }
-            else
-            {
-                var newResult = Evaluate(problem, buffer);
-                newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
-                cache.Add(cached.Clone(), newResult);
-                lastResult = newResult;
-                return newResult;
+                if (cache.TryGet(cached, out var result))
+                {
+                    lastResult = result;
+                    return result;
+                }
+                else
+                {
+                    var newResult = Evaluate(problem, buffer);
+                    newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
+                    cache.Add(cached.Clone(), newResult);
+                    lastResult = newResult;
+                    return newResult;
+                }
             }
         }
 
