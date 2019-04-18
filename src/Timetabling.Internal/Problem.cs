@@ -61,7 +61,7 @@ namespace Timetabling.Internal
                     return new ClassData(
                         c.Id,
                         c.ParentId,
-                        c.CourseId,
+                        courses.First(cs => cs.Classes.Any(cls => cls.Id == c.Id)).Id,
                         c.Capacity,
                         c.PossibleRooms,
                         c.PossibleSchedules,

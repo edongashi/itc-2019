@@ -2,16 +2,13 @@
 {
     public class Subpart
     {
-        public Subpart(int id, int courseId, Class[] classes)
+        public Subpart(int id, Class[] classes)
         {
             Id = id;
-            CourseId = courseId;
             Classes = classes;
         }
 
         public readonly int Id;
-
-        public readonly int CourseId;
 
         public readonly Class[] Classes;
     }

@@ -17,8 +17,9 @@ namespace Timetabling.Internal.Specialized
             IEnumerable<IConstraint> timeConstraints,
             IEnumerable<IConstraint> roomConstraints,
             IEnumerable<int> children)
-            : base(id, parentId, courseId, capacity, possibleRooms, possibleSchedules)
+            : base(id, parentId, capacity, possibleRooms, possibleSchedules)
         {
+            CourseId = courseId;
             CommonConstraints = commonConstraints.ToArray();
             TimeConstraints = timeConstraints.ToArray();
             RoomConstraints = roomConstraints.ToArray();
@@ -31,6 +32,8 @@ namespace Timetabling.Internal.Specialized
             HasChildren = Children.Count > 0;
             ConstraintCount = AllConstraints.Length;
         }
+
+        public readonly int CourseId;
 
         public readonly IConstraint[] CommonConstraints;
 

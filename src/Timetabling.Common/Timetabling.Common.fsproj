@@ -3,12 +3,15 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Timetabling.Internal\Timetabling.Internal.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="Monad.fs" />
     <Compile Include="Models.fs" />
+    <Compile Include="Getters.fs" />
     <Compile Include="Parse.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Timetabling.Internal\Timetabling.Internal.csproj" />
+    <Compile Include="Converters.fs" />
+    <Compile Include="Solution.fs" />
   </ItemGroup>
 </Project>

@@ -135,3 +135,42 @@ type Problem =
     Courses : Course list
     Distributions : Distribution list
     Students : Student list }
+
+module Room =
+  let id (r : Room) =
+    let (RoomId id) = r.Id
+    id
+
+module Class =
+  let id (c : Class) =
+    let (ClassId id) = c.Id
+    id
+
+module Subpart =
+  let id (s : Subpart) =
+    let (SubpartId id) = s.Id
+    id
+
+  let classes (s : Subpart) =
+    s.Classes
+
+module Config =
+  let id (c : Config) =
+    let (ConfigId id) = c.Id
+    id
+
+  let subparts (c : Config) =
+    c.Subparts
+
+module Course =
+  let id (c : Course) =
+    let (CourseId id) = c.Id
+    id
+
+  let configurations (c : Course) =
+    c.Configurations
+
+module Student =
+  let id (s : Student) =
+    let (StudentId id) = s.Id
+    id

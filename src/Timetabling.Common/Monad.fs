@@ -5,7 +5,8 @@ open System
 
 type Bind =
   static member (>>=) (source, f : 'T -> _) = Option.bind f source
-  static member (>>=) (source, k : 'T -> _) = Result.bind k source
+  static member (>>=) (source, f : 'T -> _) = Result.bind f source
+  static member (>>=) (source, f : 'T -> _) = List.collect f source
   static member inline Invoke (source : '``Monad<'T>``) (binder : 'T -> '``Monad<'U>``) : '``Monad<'U>`` =
     let inline call (_mthd : 'M, input : 'I, _output : 'R, f) = ((^M or ^I or ^R) : (static member (>>=) : _ * _ -> _) input, f)
     call (Unchecked.defaultof<Bind>, source, Unchecked.defaultof<'``Monad<'U>``>, binder)

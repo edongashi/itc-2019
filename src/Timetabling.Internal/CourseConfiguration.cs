@@ -5,17 +5,14 @@ namespace Timetabling.Internal
 {
     public class CourseConfiguration
     {
-        public CourseConfiguration(int id, int courseId, Subpart[] subparts)
+        public CourseConfiguration(int id, Subpart[] subparts)
         {
             Id = id;
-            CourseId = courseId;
             Subparts = subparts;
             Baseline = FindBaseline(subparts);
         }
 
         public readonly int Id;
-
-        public readonly int CourseId;
 
         public readonly Subpart[] Subparts;
 
