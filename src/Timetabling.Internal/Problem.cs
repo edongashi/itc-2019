@@ -168,6 +168,20 @@ namespace Timetabling.Internal
             AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
             StudentVariables = GetStudentVariables();
             InitialSolution = CreateInitialSolution();
+
+            var n = Classes.Count(c => c.PossibleRooms.Length > 0);
+            var combinations = n * (n - 1) / 2;
+            WorstCaseClassConflicts = combinations;
+            WorstCaseRoomsUnavailable = Rooms.Count(r => r.UnavailableSchedules.Length > 0);
+            WorstSoftPenalty =
+                distributionPenalty * Constraints.Where(c => !c.Required).Sum(c => c.WorstCase)
+                + roomPenalty * Classes.Where(c => c.PossibleRooms.Length > 0).Sum(c => c.PossibleRooms.Max(r => r.Penalty))
+                + timePenalty * Classes.Sum(c => c.PossibleSchedules.Max(s => s.Penalty))
+                + studentPenalty * Students.Sum(s =>
+                {
+                    var cn = s.Courses.Length;
+                    return cn * (cn - 1) / 2;
+                });
         }
 
         public readonly string Name;
@@ -211,6 +225,12 @@ namespace Timetabling.Internal
         public readonly CourseVariable[] StudentVariables;
 
         public readonly Solution InitialSolution;
+
+        internal readonly double WorstCaseClassConflicts;
+
+        internal readonly double WorstCaseRoomsUnavailable;
+
+        internal readonly double WorstSoftPenalty;
 
         internal IEnumerable<IConstraint> HardConstraints() => Constraints.Where(c => c.Required);
 
@@ -477,7 +497,9 @@ namespace Timetabling.Internal
             foreach (var constraint in Constraints)
             {
                 var (h, s) = constraint.Evaluate(this, partialSolution);
-                constraintStates[constraint.Id] = new ConstraintState(h, s);
+                var normalized = (constraint.Required ? (double)h : s) /
+                                 constraint.WorstCase;
+                constraintStates[constraint.Id] = new ConstraintState(h, s, normalized);
                 hardPenalty += h;
                 softPenalty += s * DistributionPenalty;
                 totalPenaltyDistribution += s;

@@ -107,15 +107,24 @@ namespace Timetabling.Internal
             ClassStates = classStates;
             StudentStates = studentStates;
             ConstraintStates = constraintStates;
+            NormalizedClassConflicts = classConflicts / problem.WorstCaseClassConflicts;
+            NormalizedRoomsUnavailable = roomsUnavailable / problem.WorstCaseRoomsUnavailable;
+            NormalizedSoftPenalty = softPenalty / problem.WorstSoftPenalty;
         }
 
         public readonly int HardPenalty;
 
         public readonly int ClassConflicts;
 
+        public readonly double NormalizedClassConflicts;
+
         public readonly int RoomsUnavailable;
 
+        public readonly double NormalizedRoomsUnavailable;
+
         public readonly int SoftPenalty;
+
+        public readonly double NormalizedSoftPenalty;
 
         internal readonly Problem Problem;
 
