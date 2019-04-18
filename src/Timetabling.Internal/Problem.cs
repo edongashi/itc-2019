@@ -179,7 +179,7 @@ namespace Timetabling.Internal
                 + timePenalty * Classes.Sum(c => c.PossibleSchedules.Max(s => s.Penalty))
                 + studentPenalty * Students.Sum(s =>
                 {
-                    var cn = s.Courses.Length;
+                    var cn = s.Courses.Sum(cid => Courses[cid].MaxClasses());
                     return cn * (cn - 1) / 2;
                 });
         }

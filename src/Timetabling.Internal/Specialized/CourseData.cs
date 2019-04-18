@@ -1,4 +1,6 @@
-﻿namespace Timetabling.Internal.Specialized
+﻿using System.Linq;
+
+namespace Timetabling.Internal.Specialized
 {
     public class CourseData : Course
     {
@@ -9,5 +11,10 @@
         }
 
         public readonly int[] PossibleStudents;
+
+        internal int MaxClasses()
+        {
+            return Configurations.Max(c => c.Subparts.Length);
+        }
     }
 }
