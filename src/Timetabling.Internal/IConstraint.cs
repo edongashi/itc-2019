@@ -11,6 +11,8 @@ namespace Timetabling.Internal
 
         bool Required { get; }
 
+        int WorstCase { get; }
+
         IEnumerable<int> Classes { get; }
 
         bool InvolvesClass(int @class);

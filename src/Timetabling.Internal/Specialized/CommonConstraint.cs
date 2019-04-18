@@ -41,7 +41,13 @@ namespace Timetabling.Internal.Specialized
             buffer = new (Room room, Schedule schedule)[Classes.Length];
             cache = new LruCache<CacheItem, (int hardPenalty, int softPenalty)>(CacheCapacity);
             lastResult = (-1, 0);
+
+            var n = ClassesSet.Count;
+            var pairs = n * (n - 1) / 2;
+            WorstCase = required ? pairs : penalty * pairs;
         }
+
+        public int WorstCase { get; }
 
         int IConstraint.Id => Id;
 

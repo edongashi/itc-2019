@@ -559,11 +559,13 @@ namespace Timetabling.Internal
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
                 if (roomHardPenalty != current.HardPenalty || roomSoftPenalty != current.SoftPenalty)
                 {
+                    var normalized = (roomConstraint.Required ? (double)roomHardPenalty : roomSoftPenalty) /
+                                     roomConstraint.WorstCase;
                     hardPenalty += roomHardPenalty - current.HardPenalty;
                     softPenalty += problem.DistributionPenalty * (roomSoftPenalty - current.SoftPenalty);
                     constraintStates = constraintStates.With(
                         new Override<ConstraintState>(roomConstraint.Id,
-                            new ConstraintState(roomHardPenalty, roomSoftPenalty)));
+                            new ConstraintState(roomHardPenalty, roomSoftPenalty, normalized)));
                 }
             }
 
@@ -578,11 +580,13 @@ namespace Timetabling.Internal
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
                 if (commonHardPenalty != current.HardPenalty || commonSoftPenalty != current.SoftPenalty)
                 {
+                    var normalized = (commonConstraint.Required ? (double)commonHardPenalty : commonSoftPenalty) /
+                                     commonConstraint.WorstCase;
                     hardPenalty += commonHardPenalty - current.HardPenalty;
                     softPenalty += problem.DistributionPenalty * (commonSoftPenalty - current.SoftPenalty);
                     constraintStates = constraintStates.With(
                         new Override<ConstraintState>(commonConstraint.Id,
-                            new ConstraintState(commonHardPenalty, commonSoftPenalty)));
+                            new ConstraintState(commonHardPenalty, commonSoftPenalty, normalized)));
                 }
             }
 
@@ -827,11 +831,13 @@ namespace Timetabling.Internal
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
                 if (timeHardPenalty != current.HardPenalty || timeSoftPenalty != current.SoftPenalty)
                 {
+                    var normalized = (timeConstraint.Required ? (double)timeHardPenalty : timeSoftPenalty) /
+                                     timeConstraint.WorstCase;
                     hardPenalty += timeHardPenalty - current.HardPenalty;
                     softPenalty += problem.DistributionPenalty * (timeSoftPenalty - current.SoftPenalty);
                     constraintStates = constraintStates.With(
                         new Override<ConstraintState>(timeConstraint.Id,
-                            new ConstraintState(timeHardPenalty, timeSoftPenalty)));
+                            new ConstraintState(timeHardPenalty, timeSoftPenalty, normalized)));
                 }
             }
 
@@ -846,11 +852,13 @@ namespace Timetabling.Internal
                 // ReSharper disable once CompareOfFloatsByEqualityOperator
                 if (commonHardPenalty != current.HardPenalty || commonSoftPenalty != current.SoftPenalty)
                 {
+                    var normalized = (commonConstraint.Required ? (double)commonHardPenalty : commonSoftPenalty) /
+                                     commonConstraint.WorstCase;
                     hardPenalty += commonHardPenalty - current.HardPenalty;
                     softPenalty += problem.DistributionPenalty * (commonSoftPenalty - current.SoftPenalty);
                     constraintStates = constraintStates.With(
                         new Override<ConstraintState>(commonConstraint.Id,
-                            new ConstraintState(commonHardPenalty, commonSoftPenalty)));
+                            new ConstraintState(commonHardPenalty, commonSoftPenalty, normalized)));
                 }
             }
 

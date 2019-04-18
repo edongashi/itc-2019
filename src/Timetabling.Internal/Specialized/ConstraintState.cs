@@ -6,11 +6,11 @@ namespace Timetabling.Internal.Specialized
     {
         internal ConstraintState(
             int hardPenalty, 
-            int softPenalty)
+            int softPenalty,
+            double normalized)
         {
             HardPenalty = hardPenalty;
             SoftPenalty = softPenalty;
-            double normalized = 1d;
             Normalized = normalized;
             Normalized2 = Math.Pow(normalized, 2d);
         }
