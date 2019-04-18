@@ -145,36 +145,36 @@ namespace Timetabling.Internal.Specialized
 
         public (int hardPenalty, int softPenalty) Evaluate(Problem problem, IClassStates s)
         {
-            var equals = true;
-            for (var i = 0; i < Classes.Length; i++)
-            {
-                var @class = Classes[i];
-                var room = s.GetRoom(@class);
-                var schedule = s.GetTime(@class);
-                var (currentRoom, currentSchedule) = buffer[i];
-                if (!ReferenceEquals(room, currentRoom) || !ReferenceEquals(schedule, currentSchedule))
-                {
-                    buffer[i] = (room, schedule);
-                    equals = false;
-                }
-            }
-
-            if (equals && lastResult.hardPenalty >= 0)
-            {
-                return lastResult;
-            }
-
-            if (SuppressCaching)
-            {
-                var newResult = Evaluate(problem, buffer);
-                newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
-                lastResult = newResult;
-                return newResult;
-            }
-
-            var cached = new CacheItem(buffer);
             lock (cache)
             {
+                var equals = true;
+                for (var i = 0; i < Classes.Length; i++)
+                {
+                    var @class = Classes[i];
+                    var room = s.GetRoom(@class);
+                    var schedule = s.GetTime(@class);
+                    var (currentRoom, currentSchedule) = buffer[i];
+                    if (!ReferenceEquals(room, currentRoom) || !ReferenceEquals(schedule, currentSchedule))
+                    {
+                        buffer[i] = (room, schedule);
+                        equals = false;
+                    }
+                }
+
+                if (equals && lastResult.hardPenalty >= 0)
+                {
+                    return lastResult;
+                }
+
+                if (SuppressCaching)
+                {
+                    var newResult = Evaluate(problem, buffer);
+                    newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
+                    lastResult = newResult;
+                    return newResult;
+                }
+
+                var cached = new CacheItem(buffer);
                 if (cache.TryGet(cached, out var result))
                 {
                     lastResult = result;

@@ -383,6 +383,7 @@ namespace Timetabling.Internal
             }
 
             var classConflicts = 0;
+            var roomsUnavailable = 0;
             for (var i = 0; i < classStates.Length; i++)
             {
                 var state = classStates[i];
@@ -422,6 +423,7 @@ namespace Timetabling.Internal
                     }
 
                     hardPenalty += roomUnavailablePenalty;
+                    roomsUnavailable += roomUnavailablePenalty;
 
                     softPenalty += RoomPenalty * roomAssignment.Penalty;
                     totalPenaltyRoom += roomAssignment.Penalty;
@@ -466,6 +468,8 @@ namespace Timetabling.Internal
                 this,
                 hardPenalty,
                 softPenalty,
+                classConflicts,
+                roomsUnavailable,
                 new ChunkedArray<ClassState>(classStates, chunkSize),
                 new ChunkedArray<StudentState>(studentStates, chunkSize),
                 new ChunkedArray<ConstraintState>(constraintStates, chunkSize));
@@ -479,13 +483,16 @@ namespace Timetabling.Internal
                 totalPenaltyDistribution += s;
             }
 
-            return new Solution(
+            var initialSolution = new Solution(
                 this,
                 hardPenalty,
                 softPenalty,
+                classConflicts,
+                roomsUnavailable,
                 new ChunkedArray<ClassState>(classStates, chunkSize),
                 new ChunkedArray<StudentState>(studentStates, chunkSize),
                 new ChunkedArray<ConstraintState>(constraintStates, chunkSize));
+            return initialSolution;
         }
     }
 }

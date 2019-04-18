@@ -93,6 +93,8 @@ namespace Timetabling.Internal
             Problem problem,
             int hardPenalty,
             int softPenalty,
+            int classConflicts,
+            int roomsUnavailable,
             ChunkedArray<ClassState> classStates,
             ChunkedArray<StudentState> studentStates,
             ChunkedArray<ConstraintState> constraintStates)
@@ -100,12 +102,18 @@ namespace Timetabling.Internal
             Problem = problem;
             HardPenalty = hardPenalty;
             SoftPenalty = softPenalty;
+            ClassConflicts = classConflicts;
+            RoomsUnavailable = roomsUnavailable;
             ClassStates = classStates;
             StudentStates = studentStates;
             ConstraintStates = constraintStates;
         }
 
         public readonly int HardPenalty;
+
+        public readonly int ClassConflicts;
+
+        public readonly int RoomsUnavailable;
 
         public readonly int SoftPenalty;
 
@@ -124,7 +132,7 @@ namespace Timetabling.Internal
                 + RoomUnavailablePenalty()
                 + RoomCapacityPenalty()
                 + ClassCapacityPenalty()
-                + ClassConflicts(),
+                + CountClassConflicts(),
                 TimePenalty() * Problem.TimePenalty
                 + RoomPenalty() * Problem.RoomPenalty
                 + StudentPenalty() * Problem.StudentPenalty
@@ -137,7 +145,7 @@ namespace Timetabling.Internal
             var (h, s) = CalculatePenalty();
             Console.WriteLine("========================================");
             Console.WriteLine($"=== Hard Penalty ({HardPenalty}) ===");
-            Console.WriteLine($"Class conflicts: {ClassConflicts()}");
+            Console.WriteLine($"Class conflicts: {CountClassConflicts()}");
             Console.WriteLine($"Class capacity penalty: {ClassCapacityPenalty()}");
             Console.WriteLine($"Room capacity penalty: {RoomCapacityPenalty()}");
             Console.WriteLine($"Room unavailable penalty: {RoomUnavailablePenalty()}");
@@ -244,7 +252,7 @@ namespace Timetabling.Internal
             return penalty;
         }
 
-        internal int ClassConflicts()
+        internal int CountClassConflicts()
         {
             var conflicts = 0;
             var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
@@ -767,6 +775,8 @@ namespace Timetabling.Internal
                 problem,
                 hardPenalty,
                 softPenalty,
+                ClassConflicts + classConflicts,
+                RoomsUnavailable + roomUnavailablePenalty - state.RoomUnavailablePenalty,
                 classStates.With(new Override<ClassState>(@class, newClassState)),
                 studentStates.With(studentOverrides),
                 constraintStates);
@@ -851,6 +861,7 @@ namespace Timetabling.Internal
             // Eval room availability at new time
             var roomUnavailablePenalty = 0;
             var roomId = -1;
+            var classConflicts = 0;
             if (state.Room >= 0)
             {
                 roomId = classData.PossibleRooms[state.Room].Id;
@@ -872,7 +883,6 @@ namespace Timetabling.Internal
 
                 // Cleanup clashes in previous room
                 // Eval clashes with other classes
-                var classConflicts = 0;
                 var possibleClasses = room.PossibleClasses;
                 // ReSharper disable once ForCanBeConvertedToForeach
                 for (var i = 0; i < possibleClasses.Length; i++)
@@ -1008,6 +1018,8 @@ namespace Timetabling.Internal
                 problem,
                 hardPenalty,
                 softPenalty,
+                ClassConflicts + classConflicts,
+                RoomsUnavailable + roomUnavailablePenalty - state.RoomUnavailablePenalty,
                 classStates.With(new Override<ClassState>(@class, newClassState)),
                 studentStates.With(studentOverrides),
                 constraintStates);
@@ -1372,6 +1384,8 @@ namespace Timetabling.Internal
                 problem,
                 hardPenalty,
                 softPenalty,
+                ClassConflicts,
+                RoomsUnavailable,
                 classStates.With(classUpdates),
                 studentStates.With(new Override<StudentState>(student, new StudentState(enrollmentStates, conflictingPairs))),
                 ConstraintStates);

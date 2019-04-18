@@ -139,33 +139,33 @@ namespace Timetabling.Internal.Specialized
 
         public (int hardPenalty, int softPenalty) Evaluate(Problem problem, IClassStates s)
         {
-            var equals = true;
-            for (var i = 0; i < Classes.Length; i++)
-            {
-                var time = s.GetTime(Classes[i]);
-                if (!ReferenceEquals(time, buffer[i]))
-                {
-                    buffer[i] = time;
-                    equals = false;
-                }
-            }
-
-            if (equals && lastResult.hardPenalty >= 0)
-            {
-                return lastResult;
-            }
-
-            if (SuppressCaching)
-            {
-                var newResult = Evaluate(problem, buffer);
-                newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
-                lastResult = newResult;
-                return newResult;
-            }
-
-            var cached = new CacheItem(buffer);
             lock (cache)
             {
+                var equals = true;
+                for (var i = 0; i < Classes.Length; i++)
+                {
+                    var time = s.GetTime(Classes[i]);
+                    if (!ReferenceEquals(time, buffer[i]))
+                    {
+                        buffer[i] = time;
+                        equals = false;
+                    }
+                }
+
+                if (equals && lastResult.hardPenalty >= 0)
+                {
+                    return lastResult;
+                }
+
+                if (SuppressCaching)
+                {
+                    var newResult = Evaluate(problem, buffer);
+                    newResult.hardPenalty += newResult.hardPenalty > 0 ? Difficulty : 0;
+                    lastResult = newResult;
+                    return newResult;
+                }
+
+                var cached = new CacheItem(buffer);
                 if (cache.TryGet(cached, out var result))
                 {
                     lastResult = result;
