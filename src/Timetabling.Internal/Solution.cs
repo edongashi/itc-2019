@@ -161,7 +161,7 @@ namespace Timetabling.Internal
             Console.WriteLine("=== Constraints ===");
             Console.WriteLine($"Failures: Hard: {FailedHardConstraints()}, Soft: {FailedSoftConstraints()}");
             PrintFailedConstraints();
-            Console.WriteLine($"=== Soft Penalty {SoftPenalty} ===");
+            Console.WriteLine($"=== Soft Penalty {SoftPenalty} / {NormalizedSoftPenalty} ===");
             Console.WriteLine($"Time penalty: {TimePenalty()}");
             Console.WriteLine($"Room penalty: {RoomPenalty()}");
             Console.WriteLine($"Dist penalty: {DistributionPenalty()}");
@@ -375,7 +375,7 @@ namespace Timetabling.Internal
             return conflicts;
         }
 
-        internal int FailedHardConstraints()
+        public int FailedHardConstraints()
         {
             int count = 0;
             foreach (var constraint in Problem.Constraints.Where(c => c.Required))
@@ -389,7 +389,7 @@ namespace Timetabling.Internal
             return count;
         }
 
-        internal int FailedSoftConstraints()
+        public int FailedSoftConstraints()
         {
             int count = 0;
             foreach (var constraint in Problem.Constraints.Where(c => !c.Required))
@@ -461,6 +461,33 @@ namespace Timetabling.Internal
             }
 
             return (hard, soft);
+        }
+
+        public IEnumerable<double> HardConstraintStates()
+        {
+            var count = Problem.HardConstraints.Length;
+            for (var i = 0; i < count; i++)
+            {
+                yield return NormalizedHardConstraintPenalty(i);
+            }
+        }
+
+        public double HardConstraintSquaredSum()
+        {
+            var sum = 0d;
+            var count = Problem.HardConstraints.Length;
+            for (var i = 0; i < count; i++)
+            {
+                sum += Math.Pow(NormalizedHardConstraintPenalty(i), 2);
+            }
+
+            return sum;
+        }
+
+        public double NormalizedHardConstraintPenalty(int constraintIndex)
+        {
+            var id = Problem.HardConstraints[constraintIndex].Id;
+            return ConstraintStates[id].Normalized;
         }
 
         public ScheduleAssignment GetTime(int @class)

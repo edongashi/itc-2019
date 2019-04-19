@@ -1,5 +1,11 @@
 namespace Timetabling.Common
 
+[<AutoOpen>]
+module Utils =
+  let tee f x =
+    f x
+    x
+
 module Option =
   let inline private (>>=) x f = Option.bind f x
 

@@ -49,6 +49,7 @@ namespace Timetabling.Internal
             }
 
             Constraints = constraints;
+            HardConstraints = Constraints.Where(c => c.Required).ToArray();
 
             var roomClasses = new List<int>[rooms.Length];
             var rawClasses = courses.SelectMany(c => c.Classes).ToList();
@@ -167,21 +168,25 @@ namespace Timetabling.Internal
             RoomVariablesSparse = roomSparse;
             AllClassVariables = timeVariables.Concat(roomVariables).ToArray();
             StudentVariables = GetStudentVariables();
-            InitialSolution = CreateInitialSolution();
 
             var n = Classes.Count(c => c.PossibleRooms.Length > 0);
             var combinations = n * (n - 1) / 2;
             WorstCaseClassConflicts = combinations;
             WorstCaseRoomsUnavailable = Rooms.Count(r => r.UnavailableSchedules.Length > 0);
+            WorstSoftDistributionPenalty =
+                distributionPenalty * Constraints.Where(c => !c.Required).Sum(c => c.WorstCase);
+            WorstRoomPenalty = roomPenalty * Classes.Where(c => c.PossibleRooms.Length > 0)
+                                   .Sum(c => c.PossibleRooms.Max(r => r.Penalty));
+            WorstTimePenalty = timePenalty * Classes.Sum(c => c.PossibleSchedules.Max(s => s.Penalty));
+            WorstStudentPenalty = studentPenalty * Students.Sum(s =>
+            {
+                var cn = s.Courses.Sum(cid => Courses[cid].MaxClasses());
+                return cn * (cn - 1) / 2;
+            });
             WorstSoftPenalty =
-                distributionPenalty * Constraints.Where(c => !c.Required).Sum(c => c.WorstCase)
-                + roomPenalty * Classes.Where(c => c.PossibleRooms.Length > 0).Sum(c => c.PossibleRooms.Max(r => r.Penalty))
-                + timePenalty * Classes.Sum(c => c.PossibleSchedules.Max(s => s.Penalty))
-                + studentPenalty * Students.Sum(s =>
-                {
-                    var cn = s.Courses.Sum(cid => Courses[cid].MaxClasses());
-                    return cn * (cn - 1) / 2;
-                });
+                WorstSoftDistributionPenalty + WorstRoomPenalty + WorstTimePenalty + WorstStudentPenalty;
+
+            InitialSolution = CreateInitialSolution();
         }
 
         public readonly string Name;
@@ -212,6 +217,8 @@ namespace Timetabling.Internal
 
         public readonly IConstraint[] Constraints;
 
+        public readonly IConstraint[] HardConstraints;
+
         public readonly Variable[] TimeVariables;
 
         public readonly Variable[] RoomVariables;
@@ -230,9 +237,15 @@ namespace Timetabling.Internal
 
         internal readonly double WorstCaseRoomsUnavailable;
 
-        internal readonly double WorstSoftPenalty;
+        internal readonly double WorstSoftDistributionPenalty;
 
-        internal IEnumerable<IConstraint> HardConstraints() => Constraints.Where(c => c.Required);
+        internal readonly double WorstRoomPenalty;
+
+        internal readonly double WorstTimePenalty;
+
+        internal readonly double WorstStudentPenalty;
+
+        internal readonly double WorstSoftPenalty;
 
         private CourseVariable[] GetStudentVariables()
         {

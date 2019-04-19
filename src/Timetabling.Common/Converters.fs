@@ -182,7 +182,6 @@ module Convert =
 
   let fromProblem (problem : Problem) =
     let ids = IdMapping.fromProblem problem
-    printfn "%A" ids
     (ids, Timetabling.Internal.Problem (
       problem.Name,
       problem.NumberWeeks,

@@ -5,7 +5,7 @@ open Timetabling.Common
 type Verb() = inherit CliPrefixAttribute(CliPrefix.None)
 
 type Argument =
-  |  [<ExactlyOnce>] Instance of path : string
+  | [<ExactlyOnce>] Instance of path : string
   interface IArgParserTemplate with
       member this.Usage : string =
           match this with
@@ -15,6 +15,8 @@ let initialize (problem : Problem) =
   problem
   |> ProblemWrapper.wrap
   |> ProblemWrapper.initialSolution
+  |> Solution.stats
+  |> printfn "%A"
 
 let run (args : ParseResults<Argument>) =
   let file = args.GetResult(Instance)
