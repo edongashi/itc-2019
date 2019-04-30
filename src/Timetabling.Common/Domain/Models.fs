@@ -1,4 +1,4 @@
-namespace Timetabling.Common
+namespace Timetabling.Common.Domain
 
 // Time
 type WeeksPattern = WeeksPattern of bool list
@@ -125,7 +125,7 @@ type Optimization =
     Student : int }
 
 // Problem
-type Problem =
+type ProblemModel =
   { Name : string
     NumberDays : int
     NumberWeeks : int

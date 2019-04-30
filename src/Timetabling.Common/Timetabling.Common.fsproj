@@ -6,12 +6,15 @@
     <ProjectReference Include="..\Timetabling.Internal\Timetabling.Internal.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Utils.fs" />
-    <Compile Include="Monad.fs" />
-    <Compile Include="Models.fs" />
-    <Compile Include="Getters.fs" />
-    <Compile Include="Parse.fs" />
-    <Compile Include="Converters.fs" />
+    <Compile Include="Utils/Utils.fs" />
+    <Compile Include="Utils/Monad.fs" />
+    <Compile Include="Domain/Models.fs" />
+    <Compile Include="Domain/Parse.fs" />
+    <Compile Include="Domain/Convert.fs" />
+    <Compile Include="Problem.fs" />
+    <Compile Include="Random.fs" />
     <Compile Include="Solution.fs" />
+    <Compile Include="Mutation.fs" />
+    <Compile Include="Solver.fs" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
-namespace Timetabling.Common
+namespace Timetabling.Common.Domain
+open Timetabling.Common
 
 type IdMap = Map<int, int>
 
@@ -21,6 +22,7 @@ module IdMapping =
   let resolveConfig = resolve (fun m -> m.Configurations) Config.id
   let resolveSubpart = resolve (fun m -> m.Subparts) Subpart.id
   let resolveClass = resolve (fun m -> m.Classes) Class.id
+  let resolveClassId = resolve (fun m -> m.Classes) (fun (ClassId id) -> id)
   let resolveStudent = resolve (fun m -> m.Students) Student.id
 
   let private forwardMap (fid : 'a -> int) (items : 'a list) =
@@ -28,7 +30,7 @@ module IdMapping =
     |> List.mapi (fun i x -> (fid x, i))
     |> Map.ofList
 
-  let fromProblem (problem : Problem) =
+  let fromProblem (problem : ProblemModel) =
     let rooms =
       problem.Rooms
       |> forwardMap Room.id
@@ -92,7 +94,7 @@ module Convert =
   let fromTravelTime ids (RoomTravelTime(room, TravelTime time)) =
     Timetabling.Internal.TravelTime(resolveRoomId ids room, time)
 
-  let fromRoom ids (room : Timetabling.Common.Room) =
+  let fromRoom ids (room : Room) =
     let (RoomCapacity capacity) = room.Capacity
     Timetabling.Internal.Room (
       resolveRoom ids room,
@@ -125,7 +127,7 @@ module Convert =
     let (ClassLimit limit) = cls.Limit
     Timetabling.Internal.Class (
       resolveClass ids cls,
-      cls.Parent |> Option.map (fun (ClassId id) -> id) |> Option.defaultValue -1,
+      cls.Parent |> Option.map (resolveClassId ids) |> Option.defaultValue -1,
       limit,
       cls.PossibleRooms |> listOfRoomAssignment |> mapToArray (fromRoomAssignmentDetails ids),
       cls.PossibleTimes |> mapToArray fromTimeAssignment)
@@ -180,7 +182,7 @@ module Convert =
     | MaxBreaks(r, s) -> MaxBreaks(index, r, s, required, penalty, classes) :> IConstraint
     | MaxBlock(m, s) -> MaxBlock(index, m, s, required, penalty, classes) :> IConstraint
 
-  let fromProblem (problem : Problem) =
+  let fromProblem (problem : ProblemModel) =
     let ids = IdMapping.fromProblem problem
     (ids, Timetabling.Internal.Problem (
       problem.Name,

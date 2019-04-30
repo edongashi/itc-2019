@@ -44,7 +44,7 @@ namespace Timetabling.Internal.Specialized
 
             var n = ClassesSet.Count;
             var pairs = n * (n - 1) / 2;
-            WorstCase = required ? pairs : penalty * pairs;
+            WorstCase = Math.Max(1, required ? pairs : penalty * pairs);
         }
 
         public int WorstCase { get; }

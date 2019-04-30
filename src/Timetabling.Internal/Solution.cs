@@ -126,7 +126,7 @@ namespace Timetabling.Internal
 
         public readonly double NormalizedSoftPenalty;
 
-        internal readonly Problem Problem;
+        public readonly Problem Problem;
 
         internal double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
 

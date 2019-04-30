@@ -1,21 +1,4 @@
 namespace Timetabling.Common
-open Timetabling
-
-type ProblemWrapper =
-  { Problem : Problem
-    Instance : Internal.Problem
-    IdMapping : IdMapping }
-
-module ProblemWrapper =
-  let wrap problem =
-    let ids, instance = Convert.fromProblem problem
-    { Problem = problem
-      Instance = instance
-      IdMapping = ids }
-
-  let initialSolution p = p.Instance.InitialSolution
-
-open Timetabling.Internal
 
 type EvaluationPenalties =
   { ClassConflicts : double
@@ -30,7 +13,12 @@ module EvaluationPenalties =
       SoftPenalty = 1.0
       HardContraints = Array.replicate count 1.0 }
 
+type Solution = Timetabling.Internal.Solution
+
 module Solution =
+  let initial problem =
+    problem |> Problem.initialSolution
+
   let withTime (time : int) (cls : int) (solution : Solution) =
     solution.WithTime(cls, time)
 
@@ -63,12 +51,13 @@ module Solution =
       sum <- sum + Math.Pow(solution.NormalizedHardConstraintPenalty(i) * constraints.[i], 2.0)
     sum
 
-  let unscaledEuclideanPenalty (solution : Solution) =
-    Math.Sqrt(
-      Math.Pow(solution.NormalizedClassConflicts, 2.0)
+  let unscaledEuclideanPenalty2 (solution : Solution) =
+    Math.Pow(solution.NormalizedClassConflicts * 500000.0, 2.0)
     + Math.Pow(solution.NormalizedRoomsUnavailable, 2.0)
-    + Math.Pow(solution.NormalizedSoftPenalty, 2.0)
-    + solution.HardConstraintSquaredSum())
+    + Math.Pow(solution.NormalizedSoftPenalty * 0.01, 2.0)
+    + solution.HardConstraintSquaredSum()
+
+  let unscaledEuclideanPenalty s = unscaledEuclideanPenalty2 s |> Math.Sqrt
 
   let stats (solution : Solution) =
     {| EuclideanPenalty = solution |> unscaledEuclideanPenalty
@@ -83,9 +72,10 @@ module Solution =
        NormalizedRoomsUnavailable = solution.NormalizedRoomsUnavailable
        NormalizedHardConstraints = constraints solution |}
 
-  let euclideanPenalty (penalties : EvaluationPenalties) (solution : Solution) =
-    Math.Sqrt(
-      Math.Pow(solution.NormalizedClassConflicts * penalties.ClassConflicts, 2.0)
+  let euclideanPenalty2 (penalties : EvaluationPenalties) (solution : Solution) =
+    Math.Pow(solution.NormalizedClassConflicts * penalties.ClassConflicts, 2.0)
     + Math.Pow(solution.NormalizedRoomsUnavailable * penalties.RoomUnavailable, 2.0)
     + Math.Pow(solution.NormalizedSoftPenalty * penalties.SoftPenalty, 2.0)
-    + zip penalties solution)
+    + zip penalties solution
+
+  let euclideanPenalty p s = euclideanPenalty2 p s |> Math.Sqrt

@@ -1,6 +1,7 @@
 ﻿open Argu
 open System.Xml.Linq
 open Timetabling.Common
+open Timetabling.Common.Domain
 
 type Verb() = inherit CliPrefixAttribute(CliPrefix.None)
 
@@ -11,11 +12,11 @@ type Argument =
           match this with
           | Instance _ -> "XML problem path."
 
-let initialize (problem : Problem) =
-  problem
-  |> ProblemWrapper.wrap
-  |> ProblemWrapper.initialSolution
-  |> Solution.stats
+let initialize (p : ProblemModel) =
+  let cancellation = new System.Threading.CancellationTokenSource()
+  p
+  |> Problem.wrap
+  |> Solver.solve 1 cancellation.Token
   |> printfn "%A"
 
 let run (args : ParseResults<Argument>) =
