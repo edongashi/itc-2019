@@ -155,12 +155,12 @@ module Convert =
   open Timetabling.Internal.Constraints
   type private IConstraint = Timetabling.Internal.IConstraint
 
-  let fromDistribution index (distribution : Distribution) : IConstraint =
+  let fromDistribution ids index (distribution : Distribution) : IConstraint =
     let required, penalty = match distribution.Requirement with
                             | Required -> true, 0
                             | Penalized penalty -> false, penalty
     let distributionType = distribution.Type
-    let classes = distribution.Classes |> mapToArray (fun (ClassId id) -> id)
+    let classes = distribution.Classes |> mapToArray (resolveClassId ids)
     match distributionType with
     | SameStart -> SameStart(index, required, penalty, classes) :> IConstraint
     | SameTime -> SameTime(index, required, penalty, classes) :> IConstraint
@@ -196,4 +196,4 @@ module Convert =
       problem.Rooms |> mapToArray (fromRoom ids),
       problem.Courses |> mapToArray (fromCourse ids),
       problem.Students |> mapToArray (fromStudent ids),
-      problem.Distributions |> mapiToArray fromDistribution))
+      problem.Distributions |> mapiToArray (fromDistribution ids)))
