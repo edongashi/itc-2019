@@ -7,22 +7,30 @@ open System.Threading
 open Timetabling.Internal
 
 module Solver =
-  let temperatureInitial = 1E-8
+  let temperatureInitial = 1E-6
   let temperatureChange = 0.999999
-  let maxTimeout = 50_000
+  let maxTimeout = 20_000
 
   let penaltyDecay = 0.5
-  let penaltyGainFlat = 0.05
-  let penaltyGainBias = 0.0
-  let penaltyGainDistanceFactor = 1.0
+  let penaltyGainFlat = 0.1
+  let penaltyGainBias = 0.5
+  let penaltyGainDistanceFactor = 2.0
   let penaltyGainExponent = 1.0
   let penaltyMin = 0.01
+  let penaltyMax = 50_000.0
 
-  let private scale (penalty : float) (distance : float) =
+  let private clamp v =
+    if v <= 0.5 then 0.5
+    else if v >= 1.0 then 1.0
+    else v
+
+  let private scale (penalty : float, prevDistance : float) (distance : float) =
     if distance <= 0.0 then
-      Math.Max(penaltyMin, penalty * penaltyDecay)
+      Math.Max(penaltyMin, penalty * penaltyDecay), distance
+    else if distance < prevDistance then
+      penalty * clamp(1.0 - (prevDistance - distance)), distance
     else
-      (penalty + penaltyGainFlat) * Math.Pow (1.0 + penaltyGainBias + distance * penaltyGainDistanceFactor, penaltyGainExponent)
+      Math.Min(penaltyMax, (penalty + penaltyGainFlat) * Math.Pow (1.0 + penaltyGainBias + distance * penaltyGainDistanceFactor, penaltyGainExponent)), distance
 
   let scalePenalties penalties (candidate : Solution) =
     { penalties with
