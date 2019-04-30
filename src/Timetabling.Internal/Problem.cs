@@ -171,8 +171,22 @@ namespace Timetabling.Internal
 
             var n = Classes.Count(c => c.PossibleRooms.Length > 0);
             var combinations = n * (n - 1) / 2;
-            WorstCaseClassConflicts = combinations;
-            WorstCaseRoomsUnavailable = Rooms.Count(r => r.UnavailableSchedules.Length > 0);
+            WorstCaseClassConflicts = n;
+            WorstCaseRoomsUnavailable = Math.Max(1, Rooms.Sum(r =>
+            {
+                if (r.UnavailableSchedules.Length > 0)
+                {
+                    return r.PossibleClasses.Count(c =>
+                    {
+                        var classData = Classes[c];
+                        return classData.PossibleSchedules.Any(s => r.UnavailableSchedules.Any(us => s.Overlaps(us)));
+                    });
+                }
+                else
+                {
+                    return 0;
+                }
+            }));
             WorstSoftDistributionPenalty =
                 distributionPenalty * Constraints.Where(c => !c.Required).Sum(c => c.WorstCase);
             WorstRoomPenalty = roomPenalty * Classes.Where(c => c.PossibleRooms.Length > 0)

@@ -27,11 +27,17 @@ module Random =
   let ofSeed (seed : int) =
     System.Random seed |> ofObject
 
+  let toInt (n : int) (rand : float) =
+    (float n) * rand |> int
+
   let next (random : IRandom) =
     random.NextDouble()
 
   let nextN n (random : IRandom) =
     random.Next n
+
+  let nextIndex (random : IRandom) (array : 'a []) =
+    array.[random |> nextN array.Length]
 
   let nextInt() =
     lock initial (fun () -> initial.Next())
