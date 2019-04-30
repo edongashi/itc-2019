@@ -16,7 +16,7 @@ module EvaluationPenalties =
   let defaults count =
     { ClassConflicts = float count |> Math.Sqrt |> minOne
       RoomUnavailable = float count |> Math.Sqrt |> minOne
-      SoftPenalty = 1.0
+      SoftPenalty = 0.1
       HardConstraints = Array.replicate count 1.0 }
 
   let defaultsOf (problem : Problem) =
@@ -51,9 +51,17 @@ module Solution =
   let inline private zip (penalties : EvaluationPenalties) (solution : Solution) =
     let mutable sum = 0.0
     let constraints = penalties.HardConstraints
-    let count = constraints.Length - 1
-    for i in 0..count do
+    let max = constraints.Length - 1
+    for i in 0..max do
       sum <- sum + Math.Pow(solution.NormalizedHardConstraintPenalty(i) * constraints.[i], 2.0)
+    sum
+
+  let inline private linearZip (penalties : EvaluationPenalties) (solution : Solution) =
+    let mutable sum = 0.0
+    let constraints = penalties.HardConstraints
+    let max = constraints.Length - 1
+    for i in 0..max do
+      sum <- sum + solution.NormalizedHardConstraintPenalty(i) * constraints.[i]
     sum
 
   let unscaledEuclideanPenalty2 (solution : Solution) =
@@ -84,3 +92,9 @@ module Solution =
     + zip penalties solution
 
   let euclideanPenalty p s = euclideanPenalty2 p s |> Math.Sqrt
+
+  let manhattanPenalty (penalties : EvaluationPenalties) (solution : Solution) =
+    solution.NormalizedClassConflicts * penalties.ClassConflicts
+    + solution.NormalizedRoomsUnavailable * penalties.RoomUnavailable
+    + solution.NormalizedSoftPenalty * penalties.SoftPenalty
+    + linearZip penalties solution

@@ -7,8 +7,8 @@ open System.Threading
 open Timetabling.Internal
 
 module Solver =
-  let temperatureInitial = 0.001
-  let temperatureChange = 0.99999
+  let temperatureInitial = 1E-8
+  let temperatureChange = 0.999999
   let maxTimeout = 50_000
 
   let penaltyDecay = 0.5
@@ -33,15 +33,11 @@ module Solver =
 
   let betterThan (s2 : Solution) (s1 : Solution) =
     s1.HardPenalty < s2.HardPenalty
-    || s1.HardPenalty = s2.HardPenalty && s1.SoftPenalty <= s2.SoftPenalty
+    || s1.HardPenalty = s2.HardPenalty && s1.SoftPenalty < s2.SoftPenalty
 
   let rec nest n f x =
-    if n=0 then x
-    else nest (n-1) f (f x)
-
-  let bestOf (s2 : Solution) (s1 : Solution) =
-    if s2 |> betterThan s1 then s2
-    else s1
+    if n = 0 then x
+    else nest (n - 1) f (f x)
 
   let solve seed (cancellation : CancellationToken) problem =
     let instance = problem.Instance
@@ -51,7 +47,9 @@ module Solver =
       [
         if instance.TimeVariables.Length > 0 then
           yield (fun s -> Mutate.time (next random) (next random) s)
+          yield (fun s -> Mutate.time (next random) (next random) s)
         if instance.RoomVariables.Length > 0 then
+          yield (fun s -> Mutate.room (next random) (next random) s)
           yield (fun s -> Mutate.room (next random) (next random) s)
         if instance.StudentVariables.Length > 0 then
           yield (fun s -> Mutate.enrollment (next random) (next random) s)
@@ -61,7 +59,7 @@ module Solver =
       failwith "No variables for instance."
 
     let mutate s =
-      let randomCount = Math.Max(1, (nextN 7 random) - 3) - 1
+      let randomCount = Math.Max(1, (nextN 15 random) - 9) - 1
       let mutable y = s
       for _ in 0..randomCount do
         y <- y |> (nextIndex random mutations)
@@ -77,29 +75,35 @@ module Solver =
     let mutable cycle = 0
     let mutable t = temperatureInitial
     let mutable timeout = 0
+    let mutable localHardPenalty = System.Int32.MaxValue
 
     while not cancellation.IsCancellationRequested do
       cycle <- cycle + 1
       if cycle % 2000 = 0 then
-        printfn "%A" (timeout, t, currentPenalty, best.HardPenalty, Solution.unscaledEuclideanPenalty current, current.HardPenalty, current.SoftPenalty, stats current)
+        printfn "%A" (timeout, best.HardPenalty, best.SoftPenalty, t, currentPenalty, Solution.unscaledEuclideanPenalty current, current.HardPenalty, current.SoftPenalty, stats current)
         printfn "%A" penalties
+        // current.PrintStats()
 
       let candidate = mutate current
       let candidatePenalty = euclideanPenalty penalties candidate
 
       if candidate |> betterThan best then
+        if candidate.HardPenalty < best.HardPenalty then
+          timeout <- 0
         best <- candidate
 
       if candidatePenalty < currentPenalty then
-        timeout <- 0
+        localHardPenalty <- max localHardPenalty candidate.HardPenalty
 
       if candidatePenalty <= currentPenalty then
         current <- candidate
         currentPenalty <- candidatePenalty
-
-      // else if Math.Exp((currentPenalty - candidatePenalty) / t) > next random then
-      //   current <- candidate
-      //   currentPenalty <- candidatePenalty
+        if candidate.HardPenalty < localHardPenalty then
+          timeout <- 0
+          localHardPenalty <- candidate.HardPenalty
+      else if Math.Exp((currentPenalty - candidatePenalty) / t) > next random then
+        current <- candidate
+        currentPenalty <- candidatePenalty
 
       t <- temperatureChange * t
       timeout <- timeout + 1
@@ -107,5 +111,6 @@ module Solver =
         timeout <- 0
         penalties <- scalePenalties penalties candidate
         currentPenalty <- Solution.euclideanPenalty penalties current
+        localHardPenalty <- System.Int32.MaxValue
 
     best
