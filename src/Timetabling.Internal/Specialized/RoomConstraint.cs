@@ -188,7 +188,7 @@ namespace Timetabling.Internal.Specialized
             }
         }
 
-        public virtual IEnumerable<int> EvaluateConflictingClasses(Problem problem, IClassStates solution)
+        public IEnumerable<int> EvaluateConflictingClasses(Problem problem, IClassStates solution)
         {
             return Classes;
         }

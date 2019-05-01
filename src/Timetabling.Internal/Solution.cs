@@ -197,7 +197,7 @@ namespace Timetabling.Internal
             return penalty;
         }
 
-        internal HashSet<int> RoomUnavailableClasses()
+        public HashSet<int> RoomUnavailableClasses()
         {
             var conflicts = new HashSet<int>();
             var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
@@ -297,7 +297,47 @@ namespace Timetabling.Internal
             return conflicts;
         }
 
-        internal HashSet<int> ConflictingClasses()
+        public Dictionary<int, ClassConflicts> ViolatingClasses()
+        {
+            var result = new Dictionary<int, ClassConflicts>();
+            void AddOrIncrement(int cls, ConstraintType type)
+            {
+                if (!result.TryGetValue(cls, out var state))
+                {
+                    state = new ClassConflicts(0, 0);
+                }
+
+                switch (type)
+                {
+                    case ConstraintType.Common:
+                        state = state.Increment(1, 1);
+                        break;
+                    case ConstraintType.Time:
+                        state = state.Increment(1, 0);
+                        break;
+                    case ConstraintType.Room:
+                        state = state.Increment(1, 1);
+                        break;
+                    default:
+                        return;
+                }
+
+                result[cls] = state;
+            }
+
+            ConflictingClasses().ForEach(cls => AddOrIncrement(cls, ConstraintType.Common));
+            RoomUnavailableClasses().ForEach(cls => AddOrIncrement(cls, ConstraintType.Common));
+            GetFailedHardConstraints().ForEach(constraint =>
+            {
+                constraint
+                    .EvaluateConflictingClasses(Problem, this)
+                    .ForEach(cls => AddOrIncrement(cls, constraint.Type));
+            });
+
+            return result;
+        }
+
+        public HashSet<int> ConflictingClasses()
         {
             var conflicts = new HashSet<int>();
             var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
@@ -373,6 +413,20 @@ namespace Timetabling.Internal
             }
 
             return conflicts;
+        }
+
+        public List<IConstraint> GetFailedHardConstraints()
+        {
+            var result = new List<IConstraint>();
+            foreach (var constraint in Problem.Constraints.Where(c => c.Required))
+            {
+                if (constraint.Evaluate(Problem, this).hardPenalty > 0d)
+                {
+                    result.Add(constraint);
+                }
+            }
+
+            return result;
         }
 
         public int FailedHardConstraints()
@@ -495,6 +549,11 @@ namespace Timetabling.Internal
             return Problem.Classes[@class].PossibleSchedules[ClassStates[@class].Time];
         }
 
+        public int GetTimeIndex(int @class)
+        {
+            return ClassStates[@class].Time;
+        }
+
         public Room GetRoom(int @class)
         {
             var state = ClassStates[@class];
@@ -504,6 +563,11 @@ namespace Timetabling.Internal
             }
 
             return Problem.Rooms[Problem.Classes[@class].PossibleRooms[state.Room].Id];
+        }
+
+        public int GetRoomIndex(int @class)
+        {
+            return ClassStates[@class].Room;
         }
 
         public IEnumerable<int> GetStudentClasses(int student)

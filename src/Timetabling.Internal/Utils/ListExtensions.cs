@@ -97,6 +97,14 @@ namespace Timetabling.Internal.Utils
             return -1;
         }
 
+        internal static void ForEach<T>(this IEnumerable<T> enumerable, Action<T> action)
+        {
+            foreach (var t in enumerable)
+            {
+                action(t);
+            }
+        }
+
         internal static int IndexOf<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate)
         {
             var index = 0;

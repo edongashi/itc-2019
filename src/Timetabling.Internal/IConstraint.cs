@@ -18,5 +18,7 @@ namespace Timetabling.Internal
         bool InvolvesClass(int @class);
 
         (int hardPenalty, int softPenalty) Evaluate(Problem problem, IClassStates s);
+
+        IEnumerable<int> EvaluateConflictingClasses(Problem problem, IClassStates solution);
     }
 }

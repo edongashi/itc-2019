@@ -1,26 +1,38 @@
 namespace Timetabling.Common
 
-open System
+open Timetabling.Internal.Specialized
 
 type Solution = Timetabling.Internal.Solution
+
+type ClassPenalties =
+  { Class : int
+    Rooms : float []
+    Times : float [] }
 
 type EvaluationPenalties =
   { ClassConflicts : float * float
     RoomUnavailable : float * float
     SoftPenalty : float * float
-    HardConstraints : (float * float) [] }
+    HardConstraints : (float * float) []
+    ClassPenalties : ClassPenalties [] }
 
 module EvaluationPenalties =
-  let private minOne v = Math.Max(1.0, v)
+  let private minOne v = System.Math.Max(1.0, v)
 
-  let defaults count =
-    { ClassConflicts = float count |> Math.Sqrt |> minOne, 0.0
-      RoomUnavailable = float count |> Math.Sqrt |> minOne, 0.0
-      SoftPenalty = 1.0, 0.0
-      HardConstraints = Array.replicate count (1.0, 0.0) }
+  let private constant n = fun _ -> n
 
-  let defaultsOf (problem : Problem) =
-    defaults problem.Instance.HardConstraints.Length
+  let defaults (problem : Problem) =
+    let instance = problem.Instance
+    let count = instance.HardConstraints.Length
+    { ClassConflicts = count |> double |> (*) 2.0 |> sqrt, 0.0
+      RoomUnavailable = count |> double |> (*) 2.0 |> sqrt, 0.0
+      SoftPenalty = 0.1, 0.0
+      HardConstraints = Array.replicate count (1.0, 0.0)
+      ClassPenalties =
+        instance.Classes
+        |> Array.mapi (fun i c -> { Class = i
+                                    Rooms = c.PossibleRooms |> Array.map (constant 0.0)
+                                    Times = c.PossibleSchedules |> Array.map (constant 0.0) }) }
 
 module Solution =
   let initial problem =
@@ -53,7 +65,7 @@ module Solution =
     let constraints = penalties.HardConstraints
     let max = constraints.Length - 1
     for i in 0..max do
-      sum <- sum + Math.Pow(solution.NormalizedHardConstraintPenalty(i) * (fst constraints.[i]), 2.0)
+      sum <- sum + (solution.NormalizedHardConstraintPenalty(i) |> square) * (fst constraints.[i])
     sum
 
   let inline private linearZip (penalties : EvaluationPenalties) (solution : Solution) =
@@ -65,12 +77,38 @@ module Solution =
     sum
 
   let unscaledEuclideanPenalty2 (solution : Solution) =
-    Math.Pow(solution.NormalizedClassConflicts, 2.0)
-    + Math.Pow(solution.NormalizedRoomsUnavailable, 2.0)
-    + Math.Pow(solution.NormalizedSoftPenalty * 0.01, 2.0)
+    square solution.NormalizedClassConflicts
+    + square solution.NormalizedRoomsUnavailable
+    + square solution.NormalizedSoftPenalty
     + solution.HardConstraintSquaredSum()
 
-  let unscaledEuclideanPenalty s = unscaledEuclideanPenalty2 s |> Math.Sqrt
+  let unscaledEuclideanPenalty s = unscaledEuclideanPenalty2 s |> sqrt
+
+  let euclideanPenalty2 (penalties : EvaluationPenalties) (solution : Solution) =
+    square solution.NormalizedClassConflicts * fst penalties.ClassConflicts
+    + square solution.NormalizedRoomsUnavailable * fst penalties.RoomUnavailable
+    + square solution.NormalizedSoftPenalty * fst penalties.SoftPenalty
+    + zip penalties solution
+
+  let euclideanPenalty p s = euclideanPenalty2 p s |> sqrt
+
+  let manhattanPenalty (penalties : EvaluationPenalties) (solution : Solution) =
+    solution.NormalizedClassConflicts * fst penalties.ClassConflicts
+    + solution.NormalizedRoomsUnavailable * fst penalties.RoomUnavailable
+    + solution.NormalizedSoftPenalty * fst penalties.SoftPenalty
+    + linearZip penalties solution
+
+  let classPenalty (penalties : EvaluationPenalties) (solution : Solution) =
+    let variablePenalty (variable : Variable) =
+      let cls = variable.Class
+      let classState = penalties.ClassPenalties.[cls]
+      if variable.Type = VariableType.Room then
+        classState.Rooms.[solution.GetRoomIndex(cls)]
+      else
+        classState.Times.[solution.GetTimeIndex(cls)]
+
+    solution.Problem.AllClassVariables
+    |> Array.sumBy variablePenalty
 
   let stats (solution : Solution) =
     {| EuclideanPenalty = solution |> unscaledEuclideanPenalty
@@ -84,17 +122,3 @@ module Solution =
        NormalizedClassConflicts = solution.NormalizedClassConflicts
        NormalizedRoomsUnavailable = solution.NormalizedRoomsUnavailable
        NormalizedHardConstraints = constraints solution |}
-
-  let euclideanPenalty2 (penalties : EvaluationPenalties) (solution : Solution) =
-    Math.Pow(solution.NormalizedClassConflicts * fst penalties.ClassConflicts, 2.0)
-    + Math.Pow(solution.NormalizedRoomsUnavailable * fst penalties.RoomUnavailable, 2.0)
-    + Math.Pow(solution.NormalizedSoftPenalty * fst penalties.SoftPenalty, 2.0)
-    + zip penalties solution
-
-  let euclideanPenalty p s = euclideanPenalty2 p s |> Math.Sqrt
-
-  let manhattanPenalty (penalties : EvaluationPenalties) (solution : Solution) =
-    solution.NormalizedClassConflicts * fst penalties.ClassConflicts
-    + solution.NormalizedRoomsUnavailable * fst penalties.RoomUnavailable
-    + solution.NormalizedSoftPenalty * fst penalties.SoftPenalty
-    + linearZip penalties solution

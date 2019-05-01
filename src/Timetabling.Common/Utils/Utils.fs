@@ -6,6 +6,15 @@ module Utils =
     f x
     x
 
+  open System
+
+  let inline sqrt x = Math.Sqrt(x)
+  let inline sqrtn x = Math.Sqrt(float x)
+  let inline square x = Math.Pow(x, 2.0)
+  let inline min0 x = Math.Max(0.0, x)
+  let inline min1 x = Math.Max(1.0, x)
+  let inline abs (x : float) = Math.Abs(x)
+
 module Option =
   let inline private (>>=) x f = Option.bind f x
 
