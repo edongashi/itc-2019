@@ -18,7 +18,7 @@ module Solver =
   let hardPenalizationFlat = 0.01
   let hardPenalizationRate = 1.5
 
-  let softPenalizationRate       = 1.0
+  let softPenalizationRate       = 0.95
   let softPenalizationFlat       = 0.0002
   let softPenalizationConflicts  = 0.001
   let softPenalizationAssignment = 0.0001
@@ -27,10 +27,12 @@ module Solver =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
 
   let pressureAssignment conflicts assignmentPenalty penalty =
-    penalty * softPenalizationRate
-    + softPenalizationFlat
-    + float conflicts * softPenalizationConflicts
-    + float assignmentPenalty * softPenalizationAssignment
+    if conflicts = 0 && assignmentPenalty = 0
+    then penalty * softPenalizationRate
+    else penalty * softPenalizationRate
+         + softPenalizationFlat
+         + float conflicts * softPenalizationConflicts
+         + float assignmentPenalty * softPenalizationAssignment
 
   let decayAssignment penalty =
     penalty * inactiveDecayRate - inactiveDecayFlat |> min0
