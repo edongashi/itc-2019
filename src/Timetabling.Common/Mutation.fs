@@ -1,13 +1,13 @@
 namespace Timetabling.Common
 
 module Mutate =
-  let inline private timeDiff (penalties : EvaluationPenalties) (solution : Solution) cls time =
-    let penalties = penalties.ClassPenalties.[cls].Times
+  let inline private timeDiff (penalties : ClassPenalties []) (solution : Solution) cls time =
+    let penalties = penalties.[cls].Times
     let oldTime = solution.GetTimeIndex cls
     penalties.[time] - penalties.[oldTime]
 
-  let inline private roomDiff (penalties : EvaluationPenalties) (solution : Solution) cls room =
-    let penalties = penalties.ClassPenalties.[cls].Rooms
+  let inline private roomDiff (penalties : ClassPenalties []) (solution : Solution) cls room =
+    let penalties = penalties.[cls].Rooms
     let oldRoom = solution.GetRoomIndex cls
     penalties.[room] - penalties.[oldRoom]
 

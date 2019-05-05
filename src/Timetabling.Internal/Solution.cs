@@ -128,9 +128,7 @@ namespace Timetabling.Internal
 
         public readonly Problem Problem;
 
-        internal double Penalty => HardPenalty + SoftPenalty / (SoftPenalty + 1d);
-
-        internal double SearchPenalty => (HardPenalty > 0 ? HardPenalty + 0.5d : 0d) + SoftPenalty / (SoftPenalty + 1d);
+        public double SearchPenalty => HardPenalty > 0 ? HardPenalty : NormalizedSoftPenalty;
 
         internal (int hardPenalty, int softPenalty) CalculatePenalty()
         {
@@ -167,7 +165,7 @@ namespace Timetabling.Internal
             Console.WriteLine($"Dist penalty: {DistributionPenalty()}");
             Console.WriteLine($"Student penalty: {StudentPenalty()}");
             Console.WriteLine("=== Total Penalty ===");
-            Console.WriteLine($"Instance penalty: Hard: {HardPenalty}, Soft: {SoftPenalty}, Normalized: {Penalty}");
+            Console.WriteLine($"Instance penalty: Hard: {HardPenalty}, Soft: {SoftPenalty}, Search: {SearchPenalty}");
             Console.WriteLine($"Computed penalty: Hard: {h}, Soft: {s}, Normalized: {h + s / (s + 1d)}");
             Console.WriteLine("========================================");
         }
@@ -297,6 +295,44 @@ namespace Timetabling.Internal
             return conflicts;
         }
 
+        public Dictionary<int, ClassConflicts> SoftViolatingClasses()
+        {
+            var result = new Dictionary<int, ClassConflicts>();
+            void AddOrIncrement(int cls, ConstraintType type)
+            {
+                if (!result.TryGetValue(cls, out var state))
+                {
+                    state = new ClassConflicts(0, 0);
+                }
+
+                switch (type)
+                {
+                    case ConstraintType.Common:
+                        state = state.Increment(1, 1);
+                        break;
+                    case ConstraintType.Time:
+                        state = state.Increment(1, 0);
+                        break;
+                    case ConstraintType.Room:
+                        state = state.Increment(1, 1);
+                        break;
+                    default:
+                        return;
+                }
+
+                result[cls] = state;
+            }
+
+            GetFailedSoftConstraints().ForEach(constraint =>
+            {
+                constraint
+                    .EvaluateConflictingClasses(Problem, this)
+                    .ForEach(cls => AddOrIncrement(cls, constraint.Type));
+            });
+
+            return result;
+        }
+
         public Dictionary<int, ClassConflicts> ViolatingClasses()
         {
             var result = new Dictionary<int, ClassConflicts>();
@@ -415,12 +451,26 @@ namespace Timetabling.Internal
             return conflicts;
         }
 
+        public List<IConstraint> GetFailedSoftConstraints()
+        {
+            var result = new List<IConstraint>();
+            foreach (var constraint in Problem.Constraints.Where(c => !c.Required))
+            {
+                if (constraint.Evaluate(Problem, this).softPenalty > 0)
+                {
+                    result.Add(constraint);
+                }
+            }
+
+            return result;
+        }
+
         public List<IConstraint> GetFailedHardConstraints()
         {
             var result = new List<IConstraint>();
             foreach (var constraint in Problem.Constraints.Where(c => c.Required))
             {
-                if (constraint.Evaluate(Problem, this).hardPenalty > 0d)
+                if (constraint.Evaluate(Problem, this).hardPenalty > 0)
                 {
                     result.Add(constraint);
                 }
