@@ -31,6 +31,10 @@ namespace Timetabling.Internal.Specialized
             Children = new HashSet<int>(children ?? Enumerable.Empty<int>());
             HasChildren = Children.Count > 0;
             ConstraintCount = AllConstraints.Length;
+            MinTimePenalty = possibleSchedules.Min(x => x.Penalty);
+            MinRoomPenalty = possibleRooms.Length > 0
+                ? possibleRooms.Min(x => x.Penalty)
+                : 0;
         }
 
         public readonly int CourseId;
@@ -48,6 +52,10 @@ namespace Timetabling.Internal.Specialized
         public readonly HashSet<int> Children;
 
         public readonly bool HasChildren;
+
+        public readonly int MinTimePenalty;
+
+        public readonly int MinRoomPenalty;
 
         internal IEnumerable<IConstraint> ConstraintsRelatedTo(ConstraintType type)
         {
