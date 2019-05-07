@@ -1,7 +1,15 @@
 namespace Timetabling.Common.Domain
+open Timetabling
 open Timetabling.Common
 
 type IdMap = Map<int, int>
+
+module IdMap =
+  let reverse (ids : IdMap) =
+    ids
+    |> Map.toList
+    |> List.map (fun (a, b) -> (b, a))
+    |> Map.ofList
 
 type IdMapping =
   { Rooms : IdMap
@@ -14,6 +22,14 @@ type IdMapping =
 module IdMapping =
   let private resolve (map : IdMapping -> IdMap) fid mapping item =
     mapping |> map |> Map.find (fid item)
+
+  let reverse ids =
+    { Rooms = ids.Rooms |> IdMap.reverse
+      Courses = ids.Courses |> IdMap.reverse
+      Configurations = ids.Configurations |> IdMap.reverse
+      Subparts = ids.Subparts |> IdMap.reverse
+      Classes = ids.Classes |> IdMap.reverse
+      Students = ids.Students |> IdMap.reverse }
 
   let resolveRoom = resolve (fun m -> m.Rooms) Room.id
   let resolveRoomId = resolve (fun m -> m.Rooms) (fun (RoomId id) -> id)
@@ -63,6 +79,11 @@ module IdMapping =
       Classes = classes
       Students = students }
 
+type Problem =
+  { Problem : ProblemModel
+    Instance : Internal.Problem
+    IdMapping : IdMapping }
+
 module Convert =
   open IdMapping
 
@@ -71,6 +92,21 @@ module Convert =
       if next then (acc ||| (1u <<< i), i + 1)
       else (acc, i + 1)
     List.foldBack folder pattern (0u, 0) |> fst
+
+  let private toBitPattern length (value : uint32) =
+    let str =
+      let p = System.Convert.ToString(int64 value, 2)
+      if p.Length < length then
+        p.PadLeft(length, '0')
+      else if p.Length > length then
+        p.Substring(p.Length - length)
+      else p
+    str.ToCharArray()
+    |> List.ofArray
+    |> List.map (function
+       | '1' -> true
+       | '0' -> false
+       | _ -> failwith "unreachable")
 
   let private weeksBitPattern (WeeksPattern pattern) = bitPattern pattern
   let private daysBitPattern (DaysPattern pattern) = bitPattern pattern
@@ -197,3 +233,50 @@ module Convert =
       problem.Courses |> mapToArray (fromCourse ids),
       problem.Students |> mapToArray (fromStudent ids),
       problem.Distributions |> mapiToArray (fromDistribution ids)))
+
+
+
+  let fromSolution (problem : Problem) (solution : SolutionModel) =
+    let ids = problem.IdMapping |> IdMapping.reverse
+    () // todo
+
+  let toSolution (problem : Problem) (solution : Internal.Solution) runtime =
+    let instance = problem.Instance
+    let weeksLength = instance.NumberOfWeeks
+    let daysLength = instance.DaysPerWeek
+    let classCount = instance.Classes.Length
+    let ids = problem.IdMapping |> IdMapping.reverse
+    let classes =
+      [ for i in 0 .. classCount - 1 do
+          let room = solution.GetRoomId(i)
+          let time = solution.GetTime(i)
+          let days = toBitPattern daysLength time.Days
+          let weeks = toBitPattern weeksLength time.Weeks
+          let students =
+            solution.GetClassStudents(i)
+            |> Seq.map (fun id -> StudentId ids.Students.[id])
+            |> List.ofSeq
+          yield { Id = ClassId ids.Classes.[i]
+                  Days = DaysPattern days
+                  Weeks = WeeksPattern weeks
+                  Start = time.Start
+                  Room = if room < 0
+                         then None
+                         else Some(RoomId ids.Rooms.[room])
+                  Students = students } ]
+    { Name = problem.Instance.Name
+      Runtime = runtime
+      Classes = classes }
+
+module Problem =
+  let wrap problem =
+    let ids, instance = Convert.fromProblem problem
+    { Problem = problem
+      Instance = instance
+      IdMapping = ids }
+
+  let parse xml =
+    Parse.problem xml
+    |> Result.map wrap
+
+  let initialSolution p = p.Instance.InitialSolution

@@ -6,6 +6,10 @@ module Utils =
     f x
     x
 
+  let rec nest n f x =
+    if n = 0 then x
+    else nest (n - 1) f (f x)
+
   open System
 
   let inline sqrt x = Math.Sqrt(x)
@@ -30,6 +34,11 @@ module Option =
   let traverseSeq f ls = ls |> List.ofSeq |> traverseList f
   let sequenceSeq ls = ls |> List.ofSeq |> sequenceList
 
+module List =
+  let ofOption x =
+    match x with
+    | Some x -> [x]
+    | None -> []
 
 module Result =
   let inline private (>>=) x f = Result.bind f x

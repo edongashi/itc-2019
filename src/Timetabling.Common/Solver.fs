@@ -5,6 +5,7 @@ open Solution
 open System
 open System.Threading
 open Timetabling.Internal
+open Timetabling.Common.Domain
 open System.Diagnostics
 
 module Solver =
@@ -101,11 +102,7 @@ module Solver =
     s1.HardPenalty < s2.HardPenalty
     || s1.HardPenalty = s2.HardPenalty && s1.SoftPenalty < s2.SoftPenalty
 
-  let rec nest n f x =
-    if n = 0 then x
-    else nest (n - 1) f (f x)
-
-  let solve seed (cancellation : CancellationToken) problem initialSolution =
+  let solve seed (cancellation : CancellationToken) (problem : Problem) initialSolution =
     let stopwatch = Stopwatch.StartNew()
 
     let instance = problem.Instance

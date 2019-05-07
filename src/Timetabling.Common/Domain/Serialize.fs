@@ -31,6 +31,14 @@ module Serialize =
     | Attribute(name, value) ->
         XAttribute(xname name, value) :> obj
 
+  let pattern p =
+    p
+    |> List.map (fun b -> if b then "1" else "0")
+    |> String.concat ""
+
+  let daysPattern (DaysPattern d) = pattern d
+  let weeksPattern (WeeksPattern w) = pattern w
+
   let element name content =
     Element(name, content)
 
@@ -40,18 +48,28 @@ module Serialize =
   let toXml name content =
     element name content |> serializeRec :?> XElement
 
-  let solution info seed time (solution : SolutionModel) =
+  let solution info seed runtime (solution : SolutionModel) =
     let serializeStudent (StudentId id) =
       element "student" [attr "id" id]
 
     let serializeClass (cls : SolutionClass) =
+      let (ClassId id) = cls.Id
+      let students = cls.Students |> List.map serializeStudent
+      let roomAttr =
+        cls.Room
+        |> Option.map (fun (RoomId id) -> attr "room" id)
+        |> List.ofOption
+
       element "class" ([
-        attr "id" cls.Id
-      ] @ (cls.Students |> List.map serializeStudent))
+        attr "id" id
+        attr "start" cls.Start
+        attr "days" (daysPattern cls.Days)
+        attr "weeks" (weeksPattern cls.Weeks)
+      ] @ roomAttr @ students)
 
     element "solution" ([
       attr "name" solution.Name
-      attr "runtime" time
+      attr "runtime" runtime
       attr "cores" info.Cores
       attr "technique" (sprintf "%s (seed %i)" info.Technique seed)
       attr "author" info.Author

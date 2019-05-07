@@ -12,7 +12,6 @@
     <Compile Include="Domain/Parse.fs" />
     <Compile Include="Domain/Convert.fs" />
     <Compile Include="Domain/Serialize.fs" />
-    <Compile Include="Problem.fs" />
     <Compile Include="Random.fs" />
     <Compile Include="Solution.fs" />
     <Compile Include="Mutation.fs" />

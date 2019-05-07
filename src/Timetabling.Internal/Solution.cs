@@ -620,6 +620,17 @@ namespace Timetabling.Internal
             return ClassStates[@class].Room;
         }
 
+        public IEnumerable<int> GetClassStudents(int @class)
+        {
+            for (var i = 0; i < StudentStates.Length; i++)
+            {
+                if (HasClass(i, @class))
+                {
+                    yield return i;
+                }
+            }
+        }
+
         public IEnumerable<int> GetStudentClasses(int student)
         {
             for (var i = 0; i < ClassStates.Length; i++)
@@ -636,7 +647,7 @@ namespace Timetabling.Internal
             return ConstraintStates[constraint];
         }
 
-        internal int GetRoomId(int @class)
+        public int GetRoomId(int @class)
         {
             var room = ClassStates[@class].Room;
             if (room < 0)

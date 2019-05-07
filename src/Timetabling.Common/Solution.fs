@@ -1,4 +1,5 @@
 namespace Timetabling.Common
+open Timetabling.Common.Domain
 open Timetabling.Internal.Specialized
 
 type Solution = Timetabling.Internal.Solution
