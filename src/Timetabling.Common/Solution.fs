@@ -30,15 +30,6 @@ module Solution =
   let withEnrollment (cls : int) (student : int) (solution : Solution) =
     solution.WithEnrollment(student, cls)
 
-  let hardPenalty (solution : Solution) =
-    solution.HardPenalty
-
-  let softPenalty (solution : Solution) =
-    solution.SoftPenalty
-
-  let normalizedSoftPenalty (solution : Solution) =
-    solution.NormalizedSoftPenalty
-
   let private constraints (solution : Solution) =
     solution.HardConstraintStates()
     |> Seq.toArray
