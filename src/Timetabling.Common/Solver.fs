@@ -5,37 +5,38 @@ open Solution
 open System
 open System.Threading
 open Timetabling.Internal
+open System.Diagnostics
 
 module Solver =
-  let temperatureInitial = 0.25
-  let temperatureChange = 0.99999
-  let temperatureSoftDivider = 500.0
-  let maxTimeout = 200_000
+  let temperatureUnfeasibleInitial = 0.5
+  let temperatureUnfeasibleRestart = 0.15
+  let temperatureFeasibleInitial = 1E-3
+  let temperatureFeasibleRestart = 1E-6
+  let temperatureChangeUnfeasible = 0.999999
+  let temperatureChangeFeasible = 0.99999
+  let maxTimeout = 500_000
 
-  let inactiveDecayFlat = 0.000002
-  let inactiveDecayRate = 0.5
-
-  let hardPenalizationFlat = 0.01
-  let hardPenalizationRate = 1.5
+  let hardPenalizationFlat = 0.15
+  let hardPenalizationRate = 1.05
 
   let softPenalizationRate       = 0.95
   let softPenalizationFlat       = 0.0002
   let softPenalizationConflicts  = 0.001
   let softPenalizationAssignment = 0.0001
+  let softPenalizationDecayFlat = 0.0001
+  let softPenalizationDecayRate = 0.8
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
 
   let pressureAssignment conflicts assignmentPenalty penalty =
-    if conflicts = 0 && assignmentPenalty = 0
-    then penalty * softPenalizationRate
-    else penalty * softPenalizationRate
-         + softPenalizationFlat
-         + float conflicts * softPenalizationConflicts
-         + float assignmentPenalty * softPenalizationAssignment
+    penalty * softPenalizationRate
+    + softPenalizationFlat
+    + float conflicts * softPenalizationConflicts
+    + float assignmentPenalty * softPenalizationAssignment
 
   let decayAssignment penalty =
-    penalty * inactiveDecayRate - inactiveDecayFlat |> min0
+    penalty * softPenalizationDecayRate - softPenalizationDecayFlat |> min0
 
   let scaleClassPenalties (candidate : Solution) =
     let feasible = candidate.HardPenalty = 0
@@ -74,20 +75,24 @@ module Solver =
       { penalties with
           Times = penalties.Times |> Array.mapi (fun i p ->
             if hasTimeChoices && i = classTime then
-              if hasTimeConflict
-              then penalizeAssignment conflicts.Time p
-              else if feasible
-              then pressureAssignment softConflicts.Time timeAssignmentPenalty p
-              else decayAssignment p
-            else decayAssignment p)
+              if hasTimeConflict then
+                penalizeAssignment conflicts.Time p
+              else if feasible then
+                pressureAssignment softConflicts.Time timeAssignmentPenalty p
+              else p
+            else if feasible then
+              decayAssignment p
+            else p)
           Rooms = penalties.Rooms |> Array.mapi (fun i p ->
             if hasRoomChoices && i = classRoom then
-              if hasRoomConflict
-              then penalizeAssignment conflicts.Room p
-              else if feasible
-              then pressureAssignment softConflicts.Room roomAssignmentPenalty p
-              else decayAssignment p
-            else decayAssignment p) }
+              if hasRoomConflict then
+                penalizeAssignment conflicts.Room p
+              else if feasible then
+                pressureAssignment softConflicts.Room roomAssignmentPenalty p
+              else p
+            else if feasible then
+              decayAssignment p
+            else p) }
 
   let scalePenalties penalties (candidate : Solution) =
     penalties |> Array.map (scaleClassPenalties candidate)
@@ -101,10 +106,13 @@ module Solver =
     else nest (n - 1) f (f x)
 
   let solve seed (cancellation : CancellationToken) problem =
+    let stopwatch = Stopwatch.StartNew()
+
     let instance = problem.Instance
     let random = Random.ofSeed seed
 
-    let mutable penalties = ClassPenalties.defaults problem
+    let initialPenalties = ClassPenalties.defaults problem
+    let mutable penalties = initialPenalties
 
     let mutations =
       [
@@ -116,14 +124,26 @@ module Solver =
           yield (fun s -> Mutate.variable penalties (next random) (next random) s)
         if instance.StudentVariables.Length > 0 then
           yield (fun s -> Mutate.enrollment (next random) (next random) s)
+          yield (fun s -> Mutate.enrollment (next random) (next random) s)
       ] |> Array.ofList
 
-    let mutate s =
-      let randomCount = Math.Max(1, (nextN 15 random) - 9) - 1
+    let unfeasibleMutations =
+      [
+        if instance.TimeVariables.Length > 0 then
+          yield (fun s -> Mutate.time penalties (next random) (next random) s)
+          yield (fun s -> Mutate.variable penalties (next random) (next random) s)
+        if instance.RoomVariables.Length > 0 then
+          yield (fun s -> Mutate.room penalties (next random) (next random) s)
+          yield (fun s -> Mutate.variable penalties (next random) (next random) s)
+      ] |> Array.ofList
+
+    let mutate (s : Solution) =
+      let mutationsList = if s.HardPenalty = 0 then mutations else unfeasibleMutations
+      let randomCount = Math.Max(1, (nextN 14 random) - 9) - 1
       let mutable y = s
       let mutable delta = 0.0
       for _ in 0..randomCount do
-        let (y', d) = y |> (nextIndex random mutations)
+        let (y', d) = y |> (nextIndex random mutationsList)
         delta <- delta + d
         y <- y'
       y, delta
@@ -135,7 +155,7 @@ module Solver =
     let mutable currentPenalty = current.SearchPenalty + assignmentPenalty
     let mutable timeout = 0
     let mutable cycle = 0
-    let mutable t = temperatureInitial
+    let mutable t = temperatureUnfeasibleInitial
 
     while not cancellation.IsCancellationRequested do
       cycle <- cycle + 1
@@ -153,15 +173,13 @@ module Solver =
                          AssignmentPenalty = assignmentPenalty
                          FailedConstraints = current.FailedHardConstraints() |}
             Search = {| Timeout = timeout
-                        Tempetature = t |}
+                        Tempetature = t
+                        Time = stopwatch.Elapsed.TotalSeconds |}
           |}
 
       let candidate, delta = mutate current
       let assignmentPenalty' = assignmentPenalty + delta |> min0
       let candidatePenalty = candidate.SearchPenalty + assignmentPenalty'
-
-      if candidate |> betterThan best then
-        best <- candidate
 
       if candidatePenalty < currentPenalty then
         localPenalty <- max localPenalty candidate.SearchPenalty
@@ -170,28 +188,43 @@ module Solver =
         timeout <- 0
         localPenalty <- candidate.SearchPenalty
 
-      let t' = if current.HardPenalty = 0
-                                then t / temperatureSoftDivider
-                                else t
-
       if candidatePenalty <= currentPenalty then
         current <- candidate
         currentPenalty <- candidatePenalty
         assignmentPenalty <- assignmentPenalty'
-      else if Math.Exp((currentPenalty - candidatePenalty) / t') > next random then
+      else if Math.Exp((currentPenalty - candidatePenalty) / t) > next random then
         current <- candidate
         currentPenalty <- candidatePenalty
         assignmentPenalty <- assignmentPenalty'
 
-      t <- temperatureChange * t
+      if current.HardPenalty = 0
+      then t <- temperatureChangeFeasible * t
+      else t <- temperatureChangeUnfeasible * t
+
       timeout <- timeout + 1
 
-      if timeout > maxTimeout then
+      if candidate.HardPenalty < best.HardPenalty
+         || candidate.HardPenalty = 0
+         && candidate.SoftPenalty < best.SoftPenalty then
         timeout <- 0
-        t <- temperatureInitial
+        current <- candidate
+        penalties <- initialPenalties
+        assignmentPenalty <- 0.0
+        localPenalty <- System.Double.PositiveInfinity
+        currentPenalty <- current.SearchPenalty
+      else if timeout > maxTimeout then
+        timeout <- 0
+        t <- if current.HardPenalty = 0
+             then temperatureFeasibleRestart
+             else temperatureUnfeasibleRestart
         penalties <- scalePenalties penalties candidate
         assignmentPenalty <- dynamicPenalty penalties current
         localPenalty <- System.Double.PositiveInfinity
         currentPenalty <- current.SearchPenalty + assignmentPenalty
 
-    best
+      if candidate |> betterThan best then
+        if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
+          t <- temperatureFeasibleInitial
+        best <- candidate
+
+    best, stopwatch.Elapsed.TotalSeconds
