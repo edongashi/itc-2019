@@ -16,7 +16,7 @@ let initialize (p : ProblemModel) =
   let cancellation = new System.Threading.CancellationTokenSource()
   p
   |> Problem.wrap
-  |> Solver.solve 1 cancellation.Token
+  |> fun p -> Solver.solve 1 cancellation.Token p (p |> Problem.initialSolution)
   |> printfn "%A"
 
 let run (args : ParseResults<Argument>) =

@@ -10,11 +10,11 @@ open System.Diagnostics
 module Solver =
   let temperatureUnfeasibleInitial = 0.5
   let temperatureUnfeasibleRestart = 0.15
-  let temperatureFeasibleInitial = 1E-3
-  let temperatureFeasibleRestart = 1E-6
-  let temperatureChangeUnfeasible = 0.999999
-  let temperatureChangeFeasible = 0.99999
-  let maxTimeout = 500_000
+  let temperatureFeasibleInitial   = 1E-3
+  let temperatureFeasibleRestart   = 1E-6
+  let temperatureChangeUnfeasible  = 0.999999
+  let temperatureChangeFeasible    = 0.99999
+  let maxTimeout                   = 500_000
 
   let hardPenalizationFlat = 0.15
   let hardPenalizationRate = 1.05
@@ -23,8 +23,8 @@ module Solver =
   let softPenalizationFlat       = 0.0002
   let softPenalizationConflicts  = 0.001
   let softPenalizationAssignment = 0.0001
-  let softPenalizationDecayFlat = 0.0001
-  let softPenalizationDecayRate = 0.8
+  let softPenalizationDecayFlat  = 0.0001
+  let softPenalizationDecayRate  = 0.8
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
@@ -105,7 +105,7 @@ module Solver =
     if n = 0 then x
     else nest (n - 1) f (f x)
 
-  let solve seed (cancellation : CancellationToken) problem =
+  let solve seed (cancellation : CancellationToken) problem initialSolution =
     let stopwatch = Stopwatch.StartNew()
 
     let instance = problem.Instance
@@ -148,17 +148,18 @@ module Solver =
         y <- y'
       y, delta
 
-    let mutable current = problem |> Solution.initial
+    let mutable current = initialSolution
     let mutable best = current
     let mutable localPenalty = System.Double.PositiveInfinity
     let mutable assignmentPenalty = dynamicPenalty penalties current
     let mutable currentPenalty = current.SearchPenalty + assignmentPenalty
     let mutable timeout = 0
     let mutable cycle = 0
-    let mutable t = temperatureUnfeasibleInitial
+    let mutable t = if current.HardPenalty = 0
+                    then temperatureFeasibleInitial
+                    else temperatureUnfeasibleInitial
 
     while not cancellation.IsCancellationRequested do
-      cycle <- cycle + 1
       if cycle % 2000 = 0 then
         printfn "%A"
           {|
@@ -197,10 +198,9 @@ module Solver =
         currentPenalty <- candidatePenalty
         assignmentPenalty <- assignmentPenalty'
 
-      if current.HardPenalty = 0
-      then t <- temperatureChangeFeasible * t
-      else t <- temperatureChangeUnfeasible * t
-
+      t <- if current.HardPenalty = 0
+           then temperatureFeasibleInitial
+           else temperatureUnfeasibleInitial
       timeout <- timeout + 1
 
       if candidate.HardPenalty < best.HardPenalty
@@ -226,5 +226,7 @@ module Solver =
         if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
           t <- temperatureFeasibleInitial
         best <- candidate
+
+      cycle <- cycle + 1
 
     best, stopwatch.Elapsed.TotalSeconds
