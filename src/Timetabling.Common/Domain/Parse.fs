@@ -13,12 +13,19 @@ type XmlParseError =
   { Element : XElement
     Error : ParseError }
 
+type AttributeParser<'a> = string -> XElement -> Result<'a, XmlParseError>
+
 // Utils
 module private XmlUtils =
   let private nameOfString name = name |> XName.op_Implicit
 
   let tryParseInt (str : string) =
     str |> Int32.TryParse |> function
+    | true, num -> Some num
+    | false, _ -> None
+
+  let tryParseFloat (str : string) =
+    str |> Double.TryParse |> function
     | true, num -> Some num
     | false, _ -> None
 
@@ -72,6 +79,8 @@ module private XmlUtils =
   let tryBinaryAttr prop xml = xml |> tryAttr prop >>= tryParseBinary
 
   let numAttr = attrWith tryParseInt
+
+  let floatAttr: AttributeParser<float> = attrWith tryParseFloat
 
   let binaryAttr = attrWith tryParseBinary
 
@@ -332,7 +341,6 @@ module Parse =
     }
 
   let problem xml =
-    let traverse name f = xml |> traverseChildren name f
     let maybeMap name f =
       xml
       |> tryElement name
@@ -358,4 +366,41 @@ module Parse =
                Courses = courses
                Distributions = distributions
                Students = students }
+    }
+
+  let solutionStudent xml =
+    result {
+      do! xml |> ensureName "student"
+      let! id = xml |> numAttr "id"
+      return StudentId id
+    }
+
+  let solutionClass xml =
+    let traverse name f = xml |> traverseChildren name f
+    result {
+      do! xml |> ensureName "class"
+      let! id = xml |> numAttr "id"
+      let! days = xml |> binaryAttr "days"
+      let! weeks = xml |> binaryAttr "weeks"
+      let! start = xml |> numAttr "start"
+      let room = xml |> tryNumAttr "room"
+      let! students = traverse "student" solutionStudent
+      return { Id = ClassId id
+               Days = DaysPattern days
+               Weeks = WeeksPattern weeks
+               Start = start
+               Room = room |> Option.map RoomId
+               Students = students }
+    }
+
+  let solution xml =
+    let traverse name f = xml |> traverseChildren name f
+    result {
+      do! xml |> ensureName "solution"
+      let! name = xml |> attr "name"
+      let! runtime = xml |> floatAttr "runtime"
+      let! classes = traverse "class" solutionClass
+      return { Name = name
+               Runtime = runtime
+               Classes = classes }
     }

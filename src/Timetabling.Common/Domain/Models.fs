@@ -136,6 +136,19 @@ type ProblemModel =
     Distributions : Distribution list
     Students : Student list }
 
+type SolutionClass =
+  { Id : ClassId
+    Days : DaysPattern
+    Weeks : WeeksPattern
+    Start : int
+    Room : RoomId option
+    Students : StudentId list }
+
+type SolutionModel =
+  { Name : string
+    Runtime : float
+    Classes : SolutionClass list }
+
 module Room =
   let id (r : Room) =
     let (RoomId id) = r.Id
