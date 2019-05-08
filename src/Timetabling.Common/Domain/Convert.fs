@@ -265,8 +265,10 @@ module Convert =
       let s'' = s'.WithTime(classId, schedule)
 
       let studentFolder (s : Internal.Solution) student =
-        let studentId = studentId student
-        s.WithEnrollment(studentId, classId)
+        try
+          let studentId = studentId student
+          s.WithEnrollment(studentId, classId)
+        with _ -> s
 
       cls.Students |> List.fold studentFolder s''
 

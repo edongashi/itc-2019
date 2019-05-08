@@ -9,23 +9,23 @@ open Timetabling.Common.Domain
 open System.Diagnostics
 
 module Solver =
-  let temperatureUnfeasibleInitial = 0.5
-  let temperatureUnfeasibleRestart = 0.15
-  let temperatureFeasibleInitial   = 1E-5
-  let temperatureFeasibleRestart   = 1E-6
+  let temperatureUnfeasibleInitial = 1.0
+  let temperatureUnfeasibleRestart = 0.2
+  let temperatureFeasibleInitial   = 1E-4
+  let temperatureFeasibleRestart   = 1E-5
   let temperatureChangeUnfeasible  = 0.999999
-  let temperatureChangeFeasible    = 0.99999
+  let temperatureChangeFeasible    = 0.9999995
   let maxTimeout                   = 500_000
 
-  let hardPenalizationFlat = 0.15
+  let hardPenalizationFlat = 0.1
   let hardPenalizationRate = 1.05
 
-  let softPenalizationRate       = 0.95
-  let softPenalizationFlat       = 0.0002
-  let softPenalizationConflicts  = 0.001
-  let softPenalizationAssignment = 0.001
-  let softPenalizationDecayFlat  = 0.0001
-  let softPenalizationDecayRate  = 0.8
+  let softPenalizationRate       = 0.6
+  let softPenalizationFlat       = 0.000002
+  let softPenalizationConflicts  = 0.000005
+  let softPenalizationAssignment = 0.000001
+  let softPenalizationDecayFlat  = 0.000001
+  let softPenalizationDecayRate  = 0.5
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
@@ -154,10 +154,11 @@ module Solver =
     let mutable cycle = 0ul
     let mutable t = if current.HardPenalty = 0
                     then temperatureFeasibleInitial
-                    else temperatureUnfeasibleInitial
+                    else if best.HardPenalty > 50 then temperatureUnfeasibleInitial
+                    else temperatureUnfeasibleRestart
 
     while not cancellation.IsCancellationRequested do
-      if cycle % 2000ul = 0ul then
+      if cycle % 10_000ul = 0ul then
         printfn "%A"
           {|
             Best = {| HardPenalty = best.HardPenalty
@@ -174,7 +175,7 @@ module Solver =
                         Tempetature = t
                         Time = stopwatch.Elapsed.TotalSeconds |}
           |}
-        if cycle % 2_000_000ul = 0ul then
+        if cycle % 20_000_000ul = 0ul then
           printfn "Saving backup..."
           best
           |> Solution.serialize
