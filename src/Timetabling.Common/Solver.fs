@@ -195,9 +195,9 @@ module Solver =
         currentPenalty <- candidatePenalty
         assignmentPenalty <- assignmentPenalty'
 
-      t <- if current.HardPenalty = 0
-           then temperatureFeasibleInitial
-           else temperatureUnfeasibleInitial
+      t <- t * if current.HardPenalty = 0
+               then temperatureChangeFeasible
+               else temperatureChangeUnfeasible
       timeout <- timeout + 1
 
       if candidate.HardPenalty < best.HardPenalty
