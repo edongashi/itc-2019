@@ -175,7 +175,7 @@ module Solver =
                         Tempetature = t
                         Time = stopwatch.Elapsed.TotalSeconds |}
           |}
-        if cycle % 2_000_000ul = 0ul then
+        if cycle % 5_000_000ul = 0ul then
           printfn "Saving backup..."
           best
           |> Solution.serialize
