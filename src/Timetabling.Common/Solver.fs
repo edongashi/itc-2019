@@ -23,7 +23,7 @@ module Solver =
   let softPenalizationRate       = 0.95
   let softPenalizationFlat       = 0.0002
   let softPenalizationConflicts  = 0.001
-  let softPenalizationAssignment = 0.0001
+  let softPenalizationAssignment = 0.001
   let softPenalizationDecayFlat  = 0.0001
   let softPenalizationDecayRate  = 0.8
 
@@ -151,13 +151,13 @@ module Solver =
     let mutable assignmentPenalty = dynamicPenalty penalties current
     let mutable currentPenalty = current.SearchPenalty + assignmentPenalty
     let mutable timeout = 0
-    let mutable cycle = 0
+    let mutable cycle = 0ul
     let mutable t = if current.HardPenalty = 0
                     then temperatureFeasibleInitial
                     else temperatureUnfeasibleInitial
 
     while not cancellation.IsCancellationRequested do
-      if cycle % 2000 = 0 then
+      if cycle % 2000ul = 0ul then
         printfn "%A"
           {|
             Best = {| HardPenalty = best.HardPenalty
@@ -174,6 +174,15 @@ module Solver =
                         Tempetature = t
                         Time = stopwatch.Elapsed.TotalSeconds |}
           |}
+        if cycle % 2_000_000ul = 0ul then
+          printfn "Saving backup..."
+          best
+          |> Solution.serialize
+              SolverInfo.defaults
+              problem
+              seed
+              stopwatch.Elapsed.TotalSeconds
+          |> fun xml -> xml.Save(sprintf "Backup_%s.xml" instance.Name)
 
       let candidate, delta = mutate current
       let assignmentPenalty' = assignmentPenalty + delta |> min0
@@ -224,6 +233,6 @@ module Solver =
           t <- temperatureFeasibleInitial
         best <- candidate
 
-      cycle <- cycle + 1
+      cycle <- cycle + 1ul
 
     best, stopwatch.Elapsed.TotalSeconds

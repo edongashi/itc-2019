@@ -45,10 +45,10 @@ module Serialize =
   let attr name value =
     Attribute(name, value)
 
-  let toXml name content =
-    element name content |> serializeRec :?> XElement
+  let toXml content =
+    content |> serializeRec :?> XElement
 
-  let solution info seed runtime (solution : SolutionModel) =
+  let solution info seed (solution : SolutionModel) =
     let serializeStudent (StudentId id) =
       element "student" [attr "id" id]
 
@@ -62,14 +62,14 @@ module Serialize =
 
       element "class" ([
         attr "id" id
-        attr "start" cls.Start
         attr "days" (daysPattern cls.Days)
+        attr "start" cls.Start
         attr "weeks" (weeksPattern cls.Weeks)
       ] @ roomAttr @ students)
 
     element "solution" ([
       attr "name" solution.Name
-      attr "runtime" runtime
+      attr "runtime" solution.Runtime
       attr "cores" info.Cores
       attr "technique" (sprintf "%s (seed %i)" info.Technique seed)
       attr "author" info.Author

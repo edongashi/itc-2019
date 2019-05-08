@@ -46,3 +46,8 @@ module Solution =
 
     solution.Problem.AllClassVariables
     |> Array.sumBy variablePenalty
+
+  let serialize info problem seed runtime solution =
+    Convert.toSolution problem solution runtime
+    |> Serialize.solution info seed
+    |> Serialize.toXml
