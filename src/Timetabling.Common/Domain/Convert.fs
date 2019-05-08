@@ -234,11 +234,44 @@ module Convert =
       problem.Students |> mapToArray (fromStudent ids),
       problem.Distributions |> mapiToArray (fromDistribution ids)))
 
-
-
   let fromSolution (problem : Problem) (solution : SolutionModel) =
-    let ids = problem.IdMapping |> IdMapping.reverse
-    () // todo
+    let instance = problem.Instance
+    let ids = problem.IdMapping
+
+    let roomId room =
+      room |> Option.map (fun (RoomId id) -> ids.Rooms.[id])
+
+    let classId (ClassId id) =
+      ids.Classes.[id]
+
+    let studentId (StudentId id) =
+      ids.Students.[id]
+
+    let folder (s : Internal.Solution) (cls : SolutionClass) =
+      let classId = classId cls.Id
+      let classData = instance.Classes.[classId]
+      let roomId = roomId cls.Room
+      let start = cls.Start
+      let weeks = cls.Weeks |> weeksBitPattern
+      let days = cls.Days |> daysBitPattern
+
+      let s' = match roomId with
+               | Some roomId ->
+                   let room = classData.FindRoom(roomId)
+                   s.WithRoom(classId, room)
+               | None -> s
+
+      let schedule = classData.FindSchedule(start, days, weeks)
+      let s'' = s'.WithTime(classId, schedule)
+
+      let studentFolder (s : Internal.Solution) student =
+        let studentId = studentId student
+        s.WithEnrollment(studentId, classId)
+
+      cls.Students |> List.fold studentFolder s''
+
+    solution.Classes
+    |> List.fold folder problem.Instance.InitialSolution
 
   let toSolution (problem : Problem) (solution : Internal.Solution) runtime =
     let instance = problem.Instance
@@ -278,5 +311,9 @@ module Problem =
   let parse xml =
     Parse.problem xml
     |> Result.map wrap
+
+  let parseSolution problem xml =
+    Parse.solution xml
+    |> Result.map (Convert.fromSolution problem)
 
   let initialSolution p = p.Instance.InitialSolution

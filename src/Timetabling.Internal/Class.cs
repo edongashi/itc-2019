@@ -1,4 +1,6 @@
-﻿namespace Timetabling.Internal
+﻿using Timetabling.Internal.Utils;
+
+namespace Timetabling.Internal
 {
     public class Class
     {
@@ -25,5 +27,15 @@
         public readonly RoomAssignment[] PossibleRooms;
 
         public readonly ScheduleAssignment[] PossibleSchedules;
+
+        public int FindRoom(int id)
+        {
+            return PossibleRooms.IndexOf(r => r.Id == id);
+        }
+
+        public int FindSchedule(int start, uint days, uint weeks)
+        {
+            return PossibleSchedules.IndexOf(s => s.Start == start && s.Days == days && s.Weeks == weeks);
+        }
     }
 }

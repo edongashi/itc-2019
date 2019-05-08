@@ -61,3 +61,13 @@ module Result =
     | None -> Error error
 
   let discard value = value |> Result.map ignore
+
+  let catch fallback value =
+    match value with
+    | Ok v -> v
+    | Error _ -> fallback
+
+  let catchWith f value =
+    match value with
+    | Ok v -> v
+    | Error _ -> f()
