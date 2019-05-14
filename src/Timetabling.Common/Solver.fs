@@ -10,15 +10,17 @@ open System.Diagnostics
 
 module Solver =
   let temperatureUnfeasibleInitial = 1.0
-  let temperatureUnfeasibleRestart = 0.2
+  let temperatureUnfeasibleRestart = 0.25
   let temperatureFeasibleInitial   = 1E-4
   let temperatureFeasibleRestart   = 1E-5
-  let temperatureChangeUnfeasible  = 0.999999
-  let temperatureChangeFeasible    = 0.9999995
-  let maxTimeout                   = 500_000
+  let temperatureChangeUnfeasible  = 0.9999995
+  let temperatureChangeFeasible    = 0.9999996
+  let maxTimeout                   = 1_000_000
 
-  let hardPenalizationFlat = 0.1
-  let hardPenalizationRate = 1.05
+  let hardPenalizationFlat     = 0.3
+  let hardPenalizationRate     = 1.1
+  let hardPenalizationPressure = 0.0
+  let hardPenalizationDecay    = 0.9
 
   let softPenalizationRate       = 0.6
   let softPenalizationFlat       = 0.000002
@@ -26,6 +28,10 @@ module Solver =
   let softPenalizationAssignment = 0.000001
   let softPenalizationDecayFlat  = 0.000001
   let softPenalizationDecayRate  = 0.5
+
+  type private RestartStep =
+    | PenalizationStep
+    | TemperatureStep
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
@@ -36,7 +42,10 @@ module Solver =
     + float conflicts * softPenalizationConflicts
     + float assignmentPenalty * softPenalizationAssignment
 
-  let decayAssignment penalty =
+  let decayAssignmentHard penalty =
+    penalty * hardPenalizationDecay
+
+  let decayAssignmentSoft penalty =
     penalty * softPenalizationDecayRate - softPenalizationDecayFlat |> min0
 
   let scaleClassPenalties (candidate : Solution) =
@@ -80,20 +89,22 @@ module Solver =
                 penalizeAssignment conflicts.Time p
               else if feasible then
                 pressureAssignment softConflicts.Time timeAssignmentPenalty p
-              else p
+              else p + hardPenalizationPressure
             else if feasible then
-              decayAssignment p
-            else p)
+              decayAssignmentSoft p
+            else
+              decayAssignmentHard p)
           Rooms = penalties.Rooms |> Array.mapi (fun i p ->
             if hasRoomChoices && i = classRoom then
               if hasRoomConflict then
                 penalizeAssignment conflicts.Room p
               else if feasible then
                 pressureAssignment softConflicts.Room roomAssignmentPenalty p
-              else p
+              else p + hardPenalizationPressure
             else if feasible then
-              decayAssignment p
-            else p) }
+              decayAssignmentSoft p
+            else
+              decayAssignmentHard p) }
 
   let scalePenalties penalties (candidate : Solution) =
     penalties |> Array.map (scaleClassPenalties candidate)
@@ -156,6 +167,7 @@ module Solver =
                     then temperatureFeasibleInitial
                     else if best.HardPenalty > 50 then temperatureUnfeasibleInitial
                     else temperatureUnfeasibleRestart
+    let mutable step = TemperatureStep
 
     while not cancellation.IsCancellationRequested do
       if cycle % 10_000ul = 0ul then
@@ -197,6 +209,8 @@ module Solver =
         localPenalty <- candidate.SearchPenalty
 
       if candidatePenalty <= currentPenalty then
+        if candidatePenalty < currentPenalty then
+          timeout <- 0
         current <- candidate
         currentPenalty <- candidatePenalty
         assignmentPenalty <- assignmentPenalty'
@@ -221,17 +235,23 @@ module Solver =
         currentPenalty <- current.SearchPenalty
       else if timeout > maxTimeout then
         timeout <- 0
-        t <- if current.HardPenalty = 0
-             then temperatureFeasibleRestart
-             else temperatureUnfeasibleRestart
-        penalties <- scalePenalties penalties candidate
-        assignmentPenalty <- dynamicPenalty penalties current
-        localPenalty <- System.Double.PositiveInfinity
-        currentPenalty <- current.SearchPenalty + assignmentPenalty
+        match step with
+        | TemperatureStep ->
+            t <- if current.HardPenalty = 0
+                 then temperatureFeasibleRestart
+                 else temperatureUnfeasibleRestart
+            step <- PenalizationStep
+        | PenalizationStep ->
+            penalties <- scalePenalties penalties candidate
+            assignmentPenalty <- dynamicPenalty penalties current
+            localPenalty <- System.Double.PositiveInfinity
+            currentPenalty <- current.SearchPenalty + assignmentPenalty
+            step <- TemperatureStep
 
       if candidate |> betterThan best then
         if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
           t <- temperatureFeasibleInitial
+          step <- TemperatureStep
         best <- candidate
 
       cycle <- cycle + 1ul
