@@ -195,7 +195,7 @@ module Solver =
               problem
               seed
               stopwatch.Elapsed.TotalSeconds
-          |> fun xml -> xml.Save(sprintf "Backup_%s.xml" instance.Name)
+          |> fun xml -> xml.Save(sprintf "solution_%s_%d.xml" instance.Name seed)
 
       let candidate, delta = mutate current
       let assignmentPenalty' = assignmentPenalty + delta |> min0
