@@ -184,7 +184,7 @@ module Solver =
                          AssignmentPenalty = assignmentPenalty
                          FailedConstraints = current.FailedHardConstraints() |}
             Search = {| Timeout = timeout
-                        Tempetature = t
+                        Temperature = t
                         Time = stopwatch.Elapsed.TotalSeconds |}
           |}
         if cycle % 5_000_000ul = 0ul then
