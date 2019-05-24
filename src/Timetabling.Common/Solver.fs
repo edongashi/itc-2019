@@ -170,7 +170,7 @@ module Solver =
     let mutable step = TemperatureStep
 
     while not cancellation.IsCancellationRequested do
-      if cycle % 10_000ul = 0ul then
+      if cycle % 100_000ul = 0ul then
         printfn "%A"
           {|
             Best = {| HardPenalty = best.HardPenalty
