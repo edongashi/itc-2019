@@ -11,10 +11,10 @@ open System.Diagnostics
 module Solver =
   let temperatureUnfeasibleInitial = 1.0
   let temperatureUnfeasibleRestart = 0.25
-  let temperatureFeasibleInitial   = 1E-3
+  let temperatureFeasibleInitial   = 2E-4
   let temperatureFeasibleRestart   = 1E-5
-  let temperatureChangeUnfeasible  = 0.9999996
-  let temperatureChangeFeasible    = 0.9999998
+  let temperatureChangeUnfeasible  = 0.9999995
+  let temperatureChangeFeasible    = 0.9999996
   let maxTimeout                   = 1_000_000
 
   let hardPenalizationFlat     = 0.3
@@ -22,21 +22,27 @@ module Solver =
   let hardPenalizationPressure = 0.0
   let hardPenalizationDecay    = 0.9
 
-  let softPenalizationRate       = 0.7
+  let softPenalizationRate       = 0.6
   let softPenalizationFlat       = 0.000002
-  let softPenalizationConflicts  = 0.000005
-  let softPenalizationAssignment = 0.000001
+  let softPenalizationConflicts  = 0.0000001
+  let softPenalizationAssignment = 0.0000001
   let softPenalizationDecayFlat  = 0.000001
-  let softPenalizationDecayRate  = 0.6
+  let softPenalizationDecayRate  = 0.5
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
 
-  let pressureAssignment conflicts assignmentPenalty penalty =
+  let pressureTimeAssignment (optimization: Optimization) conflicts assignmentPenalty penalty =
     penalty * softPenalizationRate
     + softPenalizationFlat
-    + float conflicts * softPenalizationConflicts
-    + float assignmentPenalty * softPenalizationAssignment
+    + float conflicts * softPenalizationConflicts * float optimization.Distribution
+    + float assignmentPenalty * softPenalizationAssignment * float optimization.Time
+
+  let pressureRoomAssignment (optimization: Optimization) conflicts assignmentPenalty penalty =
+    penalty * softPenalizationRate
+    + softPenalizationFlat
+    + float conflicts * softPenalizationConflicts * float optimization.Distribution
+    + float assignmentPenalty * softPenalizationAssignment * float optimization.Room
 
   let decayAssignmentHard penalty =
     penalty * hardPenalizationDecay
@@ -45,6 +51,11 @@ module Solver =
     penalty * softPenalizationDecayRate - softPenalizationDecayFlat |> min0
 
   let scaleClassPenalties (candidate : Solution) =
+    let problem = candidate.Problem
+    let optimization = { Time = problem.TimePenalty
+                         Room = problem.RoomPenalty
+                         Distribution = problem.DistributionPenalty
+                         Student = problem.StudentPenalty }
     let feasible = candidate.HardPenalty = 0
     let classes = candidate.Problem.Classes
     let conflicts = candidate.ViolatingClasses()
@@ -84,7 +95,7 @@ module Solver =
               if hasTimeConflict then
                 penalizeAssignment conflicts.Time p
               else if feasible then
-                pressureAssignment softConflicts.Time timeAssignmentPenalty p
+                pressureTimeAssignment optimization softConflicts.Time timeAssignmentPenalty p
               else p + hardPenalizationPressure
             else if feasible then
               decayAssignmentSoft p
@@ -95,7 +106,7 @@ module Solver =
               if hasRoomConflict then
                 penalizeAssignment conflicts.Room p
               else if feasible then
-                pressureAssignment softConflicts.Room roomAssignmentPenalty p
+                pressureRoomAssignment optimization softConflicts.Room roomAssignmentPenalty p
               else p + hardPenalizationPressure
             else if feasible then
               decayAssignmentSoft p
