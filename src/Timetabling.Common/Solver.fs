@@ -11,10 +11,10 @@ open System.Diagnostics
 module Solver =
   let temperatureUnfeasibleInitial = 1.0
   let temperatureUnfeasibleRestart = 0.25
-  let temperatureFeasibleInitial   = 2E-4
+  let temperatureFeasibleInitial   = 1E-4
   let temperatureFeasibleRestart   = 1E-5
   let temperatureChangeUnfeasible  = 0.9999995
-  let temperatureChangeFeasible    = 0.9999996
+  let temperatureChangeFeasible    = 0.9999997
   let maxTimeout                   = 1_000_000
 
   let hardPenalizationFlat     = 0.3
