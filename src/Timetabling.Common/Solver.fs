@@ -11,10 +11,10 @@ open System.Diagnostics
 module Solver =
   let temperatureUnfeasibleInitial = 1.0
   let temperatureUnfeasibleRestart = 0.25
-  let temperatureFeasibleInitial   = 1E-4
+  let temperatureFeasibleInitial   = 1E-3
   let temperatureFeasibleRestart   = 1E-5
-  let temperatureChangeUnfeasible  = 0.9999995
-  let temperatureChangeFeasible    = 0.9999996
+  let temperatureChangeUnfeasible  = 0.9999996
+  let temperatureChangeFeasible    = 0.9999998
   let maxTimeout                   = 1_000_000
 
   let hardPenalizationFlat     = 0.3
@@ -22,16 +22,12 @@ module Solver =
   let hardPenalizationPressure = 0.0
   let hardPenalizationDecay    = 0.9
 
-  let softPenalizationRate       = 0.6
+  let softPenalizationRate       = 0.7
   let softPenalizationFlat       = 0.000002
   let softPenalizationConflicts  = 0.000005
   let softPenalizationAssignment = 0.000001
   let softPenalizationDecayFlat  = 0.000001
-  let softPenalizationDecayRate  = 0.5
-
-  type private RestartStep =
-    | PenalizationStep
-    | TemperatureStep
+  let softPenalizationDecayRate  = 0.6
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
@@ -167,10 +163,9 @@ module Solver =
                     then temperatureFeasibleInitial
                     else if best.HardPenalty > 50 then temperatureUnfeasibleInitial
                     else temperatureUnfeasibleRestart
-    let mutable step = TemperatureStep
 
     while not cancellation.IsCancellationRequested do
-      if cycle % 100_000ul = 0ul then
+      if cycle % 50_000ul = 0ul then
         printfn "%A"
           {|
             Best = {| HardPenalty = best.HardPenalty
@@ -235,23 +230,17 @@ module Solver =
         currentPenalty <- current.SearchPenalty
       else if timeout > maxTimeout then
         timeout <- 0
-        match step with
-        | TemperatureStep ->
-            t <- if current.HardPenalty = 0
-                 then temperatureFeasibleRestart
-                 else temperatureUnfeasibleRestart
-            step <- PenalizationStep
-        | PenalizationStep ->
-            penalties <- scalePenalties penalties candidate
-            assignmentPenalty <- dynamicPenalty penalties current
-            localPenalty <- System.Double.PositiveInfinity
-            currentPenalty <- current.SearchPenalty + assignmentPenalty
-            step <- TemperatureStep
+        t <- if current.HardPenalty = 0
+             then temperatureFeasibleRestart
+             else temperatureUnfeasibleRestart
+        penalties <- scalePenalties penalties candidate
+        assignmentPenalty <- dynamicPenalty penalties current
+        localPenalty <- System.Double.PositiveInfinity
+        currentPenalty <- current.SearchPenalty + assignmentPenalty
 
       if candidate |> betterThan best then
         if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
           t <- temperatureFeasibleInitial
-          step <- TemperatureStep
         best <- candidate
 
       cycle <- cycle + 1ul
