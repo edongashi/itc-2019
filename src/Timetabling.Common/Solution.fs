@@ -51,3 +51,24 @@ module Solution =
     Convert.toSolution problem solution runtime
     |> Serialize.solution info seed
     |> Serialize.toXml
+
+  let stats (solution : Solution) =
+    let problem = solution.Problem
+    {| HardPenalty = solution.HardPenalty
+       SoftPenalty = solution.SoftPenalty
+       SoftPenaltyNormalized = solution.NormalizedSoftPenalty
+       SearchPenalty = solution.SearchPenalty
+       ClassConflicts = solution.ClassConflicts
+       RoomsUnavailable = solution.RoomsUnavailable
+       FailedHardConstraints = solution.FailedHardConstraints()
+       TimePenalty = solution.TimePenalty()
+       TimePenaltyMin = solution.TimePenaltyMin()
+       TimePenaltyAverage = (solution.TimePenalty() |> float) / (float problem.TimeVariables.Length)
+       TimePenaltyMax = solution.TimePenaltyMax()
+       RoomPenalty = solution.RoomPenalty()
+       RoomPenaltyMin = solution.RoomPenaltyMin()
+       RoomPenaltyAverage = (solution.RoomPenalty() |> float) / (float problem.RoomVariables.Length)
+       RoomPenaltyMax = solution.RoomPenaltyMax()
+       DistributionPenalty = solution.DistributionPenalty()
+       FailedSoftConstraints = solution.FailedSoftConstraints()
+       StudentPenalty = solution.StudentPenalty() |}

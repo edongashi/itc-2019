@@ -128,7 +128,9 @@ namespace Timetabling.Internal
 
         public readonly Problem Problem;
 
-        public double SearchPenalty => HardPenalty > 0 ? HardPenalty : NormalizedSoftPenalty;
+        public double SearchPenalty => HardPenalty > 0
+          ? 0.02d * HardPenalty + 0.1d * Math.Ceiling(10d * NormalizedSoftPenalty)
+          : NormalizedSoftPenalty;
 
         internal (int hardPenalty, int softPenalty) CalculatePenalty()
         {
@@ -140,10 +142,10 @@ namespace Timetabling.Internal
                 + RoomCapacityPenalty()
                 + ClassCapacityPenalty()
                 + CountClassConflicts(),
-                TimePenalty() * Problem.TimePenalty
-                + RoomPenalty() * Problem.RoomPenalty
-                + StudentPenalty() * Problem.StudentPenalty
-                + distSoft * Problem.DistributionPenalty
+                TimePenalty()
+                + RoomPenalty()
+                + StudentPenalty()
+                + distSoft
                 );
         }
 
@@ -410,7 +412,63 @@ namespace Timetabling.Internal
             return conflicts;
         }
 
-        internal int StudentPenalty()
+        public Dictionary<int, int> StudentConflictingClasses()
+        {
+            var result = new Dictionary<int, int>();
+            var conflicts = 0;
+            for (var i = 0; i < StudentStates.Length; i++)
+            {
+                var conflictingClasses = new HashSet<int>();
+                var studentData = Problem.Students[i];
+                var studentState = StudentStates[i];
+                var classesSoFar = new List<(int id, Schedule schedule, int room)>();
+                for (var j = 0; j < studentState.EnrollmentStates.Length; j++)
+                {
+                    var enrollmentState = studentState.EnrollmentStates[j];
+                    var course = Problem
+                        .Courses[studentData.Courses[j]]
+                        .Configurations[enrollmentState.ConfigIndex];
+
+                    for (var k = 0; k < enrollmentState.Subparts.Length; k++)
+                    {
+                        var classIndex = enrollmentState.Subparts[k];
+                        var classObject = course.Subparts[k].Classes[classIndex];
+                        var classData = Problem.Classes[classObject.Id];
+                        var classState = ClassStates[classObject.Id];
+                        var schedule = classData.PossibleSchedules[classState.Time];
+                        var room = classState.Room >= 0 ? classData.PossibleRooms[classState.Room].Id : -1;
+
+                        foreach (var (id, prevSchedule, prevRoom) in classesSoFar)
+                        {
+                            var travelTime = room >= 0 && prevRoom >= 0 ? Problem.TravelTimes[room, prevRoom] : 0;
+                            if (schedule.Overlaps(prevSchedule, travelTime))
+                            {
+                                conflicts++;
+                                conflictingClasses.Add(id);
+                            }
+                        }
+
+                        classesSoFar.Add((classObject.Id, schedule, room));
+                    }
+                }
+
+                foreach (var id in conflictingClasses)
+                {
+                    if (result.ContainsKey(id))
+                    {
+                        result[id]++;
+                    }
+                    else
+                    {
+                        result[id] = 1;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public int StudentPenalty()
         {
             var conflicts = 0;
             for (var i = 0; i < StudentStates.Length; i++)
@@ -448,7 +506,7 @@ namespace Timetabling.Internal
                 }
             }
 
-            return conflicts;
+            return conflicts * Problem.StudentPenalty;
         }
 
         public List<IConstraint> GetFailedSoftConstraints()
@@ -507,7 +565,7 @@ namespace Timetabling.Internal
             return count;
         }
 
-        internal int RoomPenalty()
+        public int RoomPenalty()
         {
             var roomPenalty = 0;
             for (var i = 0; i < Problem.Classes.Length; i++)
@@ -520,10 +578,42 @@ namespace Timetabling.Internal
                 }
             }
 
-            return roomPenalty;
+            return roomPenalty * Problem.RoomPenalty;
         }
 
-        internal int TimePenalty()
+        public int RoomPenaltyMin()
+        {
+            var roomPenalty = int.MaxValue;
+            for (var i = 0; i < Problem.Classes.Length; i++)
+            {
+                var @class = Problem.Classes[i];
+                var state = ClassStates[i];
+                if (state.Room != -1)
+                {
+                    roomPenalty = Math.Min(roomPenalty, @class.PossibleRooms[state.Room].Penalty);
+                }
+            }
+
+            return roomPenalty * Problem.RoomPenalty;
+        }
+
+        public int RoomPenaltyMax()
+        {
+            var roomPenalty = int.MinValue;
+            for (var i = 0; i < Problem.Classes.Length; i++)
+            {
+                var @class = Problem.Classes[i];
+                var state = ClassStates[i];
+                if (state.Room != -1)
+                {
+                    roomPenalty = Math.Max(roomPenalty, @class.PossibleRooms[state.Room].Penalty);
+                }
+            }
+
+            return roomPenalty * Problem.RoomPenalty;
+        }
+
+        public int TimePenalty()
         {
             var timePenalty = 0;
             for (var i = 0; i < Problem.Classes.Length; i++)
@@ -533,12 +623,38 @@ namespace Timetabling.Internal
                 timePenalty += @class.PossibleSchedules[state.Time].Penalty;
             }
 
-            return timePenalty;
+            return timePenalty * Problem.TimePenalty;
         }
 
-        internal int DistributionPenalty()
+        public int TimePenaltyMin()
         {
-            return CalculateDistributionPenalty().softPenalty;
+            var timePenalty = int.MaxValue;
+            for (var i = 0; i < Problem.Classes.Length; i++)
+            {
+                var @class = Problem.Classes[i];
+                var state = ClassStates[i];
+                timePenalty = Math.Min(timePenalty, @class.PossibleSchedules[state.Time].Penalty);
+            }
+
+            return timePenalty * Problem.TimePenalty;
+        }
+
+        public int TimePenaltyMax()
+        {
+            var timePenalty = int.MinValue;
+            for (var i = 0; i < Problem.Classes.Length; i++)
+            {
+                var @class = Problem.Classes[i];
+                var state = ClassStates[i];
+                timePenalty = Math.Max(timePenalty, @class.PossibleSchedules[state.Time].Penalty);
+            }
+
+            return timePenalty * Problem.TimePenalty;
+        }
+
+        public int DistributionPenalty()
+        {
+            return CalculateDistributionPenalty().softPenalty * Problem.DistributionPenalty;
         }
 
         private void PrintFailedConstraints()

@@ -36,6 +36,9 @@ module Random =
   let nextN n (random : IRandom) =
     random.Next n
 
+  let nextBool (random : IRandom) =
+    random.Next 2 = 0
+
   let nextIndex (random : IRandom) (array : 'a []) =
     array.[random |> nextN array.Length]
 
