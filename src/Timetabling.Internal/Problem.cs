@@ -438,6 +438,7 @@ namespace Timetabling.Internal
 
             var classConflicts = 0;
             var roomsUnavailable = 0;
+            var classOverflows = 0;
             for (var i = 0; i < classStates.Length; i++)
             {
                 var state = classStates[i];
@@ -453,7 +454,7 @@ namespace Timetabling.Internal
                 var classCapacityPenalty = state.Attendees > classData.Capacity
                     ? Solution.ClassCapacityOverflowBase + (state.Attendees - classData.Capacity) / Solution.ClassCapacityOverflowRate
                     : 0;
-                hardPenalty += classCapacityPenalty;
+                classOverflows += classCapacityPenalty;
 
                 if (state.Room >= 0)
                 {
@@ -522,6 +523,7 @@ namespace Timetabling.Internal
                 this,
                 hardPenalty,
                 softPenalty,
+                classOverflows,
                 classConflicts,
                 roomsUnavailable,
                 new ChunkedArray<ClassState>(classStates, chunkSize),
@@ -543,6 +545,7 @@ namespace Timetabling.Internal
                 this,
                 hardPenalty,
                 softPenalty,
+                classOverflows,
                 classConflicts,
                 roomsUnavailable,
                 new ChunkedArray<ClassState>(classStates, chunkSize),
