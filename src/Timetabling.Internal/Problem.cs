@@ -264,12 +264,14 @@ namespace Timetabling.Internal
         private CourseVariable[] GetStudentVariables()
         {
             var variables = new List<CourseVariable>();
+            var variableId = 0;
             for (var i = 0; i < Students.Length; i++)
             {
                 var student = Students[i];
                 for (var j = 0; j < student.Courses.Length; j++)
                 {
                     var course = Courses[student.Courses[j]];
+                    var chains = course.ClassChains;
                     if (course.Configurations.Length == 1)
                     {
                         var subparts = course.Configurations[0].Subparts;
@@ -326,7 +328,12 @@ namespace Timetabling.Internal
                         throw new InvalidOperationException(CorruptInstance);
                     }
 
-                    variables.Add(new CourseVariable(student.Id, configs.ToArray()));
+                    variables.Add(new CourseVariable(
+                        variableId++,
+                        student.Id,
+                        course.Id,
+                        j,
+                        chains));
                 }
             }
 
@@ -444,7 +451,7 @@ namespace Timetabling.Internal
                 var roomCapacityPenalty = 0;
                 var roomUnavailablePenalty = 0;
                 var classCapacityPenalty = state.Attendees > classData.Capacity
-                    ? Solution.CapacityOverflowBase + (state.Attendees - classData.Capacity) / Solution.CapacityOverflowRate
+                    ? Solution.ClassCapacityOverflowBase + (state.Attendees - classData.Capacity) / Solution.ClassCapacityOverflowRate
                     : 0;
                 hardPenalty += classCapacityPenalty;
 
@@ -454,7 +461,7 @@ namespace Timetabling.Internal
                     roomId = roomAssignment.Id;
                     var room = Rooms[roomId];
                     roomCapacityPenalty = state.Attendees > room.Capacity
-                        ? Solution.CapacityOverflowBase + (state.Attendees - room.Capacity) / Solution.CapacityOverflowRate
+                        ? Solution.RoomCapacityOverflowBase + (state.Attendees - room.Capacity) / Solution.RoomCapacityOverflowRate
                         : 0;
 
                     hardPenalty += roomCapacityPenalty;

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Timetabling.Internal.Specialized;
 
 namespace Timetabling.Internal
 {
@@ -20,6 +21,10 @@ namespace Timetabling.Internal
                     break;
                 }
             }
+
+            ClassChains = Configurations
+                .SelectMany((config, index) => config.ClassChains.Select(c => new Chain(id, index, c)))
+                .ToArray();
         }
 
         public readonly int Id;
@@ -29,6 +34,8 @@ namespace Timetabling.Internal
         internal readonly int BaselineConfiguration;
 
         internal readonly int[] Baseline;
+
+        internal readonly Chain[] ClassChains;
 
         internal IEnumerable<Class> Classes => Configurations.SelectMany(c => c.Classes);
     }

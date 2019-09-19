@@ -2,20 +2,33 @@
 
 namespace Timetabling.Internal.Specialized
 {
-    public struct CourseVariable
+    public class CourseVariable
     {
-        internal CourseVariable(int student, int[][][] values)
+        internal CourseVariable(
+            int variableId,
+            int student, 
+            int courseId,
+            int courseIndex,
+            Chain[] chains)
         {
-            Student = student;
-            Values = values;
-            LooseValues = values.SelectMany(c => c.SelectMany(s => s)).ToArray();
+            VariableId = variableId;
+            StudentId = student;
+            CourseId = courseId;
+            CourseIndex = courseIndex;
+            ClassChains = chains;
+            ChainCount = chains.Length;
         }
 
-        public readonly int Student;
+        public readonly int VariableId;
 
-        public readonly int[] LooseValues;
+        public readonly int StudentId;
 
-        // Configurations -> Child Subparts -> Classes
-        internal readonly int[][][] Values;
+        public readonly int CourseId;
+
+        public readonly int CourseIndex;
+
+        public readonly Chain[] ClassChains;
+
+        public readonly int ChainCount;
     }
 }

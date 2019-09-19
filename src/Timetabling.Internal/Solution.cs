@@ -82,8 +82,10 @@ namespace Timetabling.Internal
             return new SolutionProxy(this, ov);
         }
 
-        internal const int CapacityOverflowBase = 0;
-        internal const int CapacityOverflowRate = int.MaxValue;
+        internal const int RoomCapacityOverflowBase = 0;
+        internal const int RoomCapacityOverflowRate = int.MaxValue;
+        internal const int ClassCapacityOverflowBase = 1;
+        internal const int ClassCapacityOverflowRate = 2;
 
         internal readonly ChunkedArray<ClassState> ClassStates;
         internal readonly ChunkedArray<StudentState> StudentStates;
@@ -233,7 +235,7 @@ namespace Timetabling.Internal
                 {
                     if (ci.Attendees > ri.Capacity)
                     {
-                        var val = CapacityOverflowBase + (ci.Attendees - ri.Capacity) / CapacityOverflowRate;
+                        var val = RoomCapacityOverflowBase + (ci.Attendees - ri.Capacity) / RoomCapacityOverflowRate;
                         penalty += val;
                         Debug.Assert(ci.RoomCapacityPenalty == val);
                     }
@@ -243,7 +245,7 @@ namespace Timetabling.Internal
             return penalty;
         }
 
-        internal int ClassCapacityPenalty()
+        public int ClassCapacityPenalty()
         {
             var penalty = 0;
             var classes = Problem.Classes.Select(c => (ClassStates[c.Id], GetTime(c.Id), GetRoom(c.Id))).ToArray();
@@ -252,7 +254,7 @@ namespace Timetabling.Internal
                 var (ci, ti, ri) = classes[i];
                 if (ci.Attendees > Problem.Classes[i].Capacity)
                 {
-                    var val = CapacityOverflowBase + (ci.Attendees - Problem.Classes[i].Capacity) / CapacityOverflowRate;
+                    var val = ClassCapacityOverflowBase + (ci.Attendees - Problem.Classes[i].Capacity) / ClassCapacityOverflowRate;
                     Debug.Assert(val == ci.ClassCapacityPenalty);
                     penalty += val;
                 }
@@ -873,7 +875,7 @@ namespace Timetabling.Internal
             // Eval new room capacity
             var newRoom = problem.Rooms[classData.PossibleRooms[room].Id];
             var roomCapacityPenalty = state.Attendees > newRoom.Capacity
-                ? CapacityOverflowBase + (state.Attendees - newRoom.Capacity) / CapacityOverflowRate
+                ? RoomCapacityOverflowBase + (state.Attendees - newRoom.Capacity) / RoomCapacityOverflowRate
                 : 0;
 
             hardPenalty += roomCapacityPenalty;
@@ -1310,71 +1312,34 @@ namespace Timetabling.Internal
                 constraintStates);
         }
 
-        public Solution WithEnrollment(int student, int @class)
+        public Solution WithEnrollment(int studentVariableIndex, int chainIndex)
         {
-            var studentStates = StudentStates;
-            var studentState = studentStates[student];
             var problem = Problem;
-            var studentData = problem.Students[student];
-            var enrollmentConfigurations = studentData.EnrollmentConfigurations;
-            if (!enrollmentConfigurations.TryGetValue(@class, out var newConfig))
-            {
-                throw new ArgumentOutOfRangeException(nameof(@class));
-            }
+            var studentVariable = problem.StudentVariables[studentVariableIndex];
+            var studentId = studentVariable.StudentId;
+            var courseIndex = studentVariable.CourseIndex;
 
-            var classes = problem.Classes;
-            var newClassData = classes[@class];
-            if (newClassData.HasChildren)
-            {
-                throw new InvalidOperationException("Only loose classes can be assigned directly.");
-            }
+            var studentStates = StudentStates;
+            var studentState = studentStates[studentId];
 
-            var states = studentState.EnrollmentStates;
-            var courseIndex = newConfig.CourseIndex;
-            var newConfigIndex = newConfig.ConfigIndex;
-            var oldState = states[courseIndex];
-            var oldConfigIndex = oldState.ConfigIndex;
+            var oldState = studentState.EnrollmentStates[courseIndex];
             var oldSubparts = oldState.Subparts;
-            EnrollmentState newState;
-            if (oldConfigIndex == newConfigIndex)
-            {
-                // Same config
-                if (oldSubparts[newConfig.SubpartIndex] == newConfig.ClassIndex)
-                {
-                    // No change
-                    return this;
-                }
 
-                newState = new EnrollmentState(newConfigIndex, (int[])oldSubparts.Clone());
-            }
-            else
+            var newChainObject = studentVariable.ClassChains[chainIndex];
+            var newSubparts = newChainObject.Indexes;
+
+            if (oldSubparts == newSubparts)
             {
-                // Different config
-                var courseId = studentData.Courses[courseIndex];
-                newState = new EnrollmentState(newConfigIndex, (int[])problem.Courses[courseId].Configurations[newConfigIndex].Baseline.Clone());
+                return this;
             }
 
-            var newSubparts = newState.Subparts;
-            var parentId = newClassData.ParentId;
-            newSubparts[newConfig.SubpartIndex] = newConfig.ClassIndex;
-            var updates = 1;
-            // Iterate parent chain
-            while (parentId >= 0)
-            {
-                if (!enrollmentConfigurations.TryGetValue(parentId, out var parentConfig)
-                    || parentConfig.CourseIndex != courseIndex || parentConfig.ConfigIndex != newConfigIndex)
-                {
-                    throw new InvalidOperationException("Corrupt problem instance.");
-                }
+            var oldConfigIndex = oldState.ConfigIndex;
+            var newConfigIndex = newChainObject.ConfigIndex;
+            var studentData = problem.Students[studentId];
+            var newState = new EnrollmentState(newConfigIndex, newSubparts);
 
-                newSubparts[parentConfig.SubpartIndex] = parentConfig.ClassIndex;
-                var parentClass = classes[parentId];
-                parentId = parentClass.ParentId;
-                updates++;
-            }
-
-            var enrollmentStates = (EnrollmentState[])studentState.EnrollmentStates.Clone();
-            enrollmentStates[courseIndex] = newState;
+            var newEnrollmentStates = (EnrollmentState[])studentState.EnrollmentStates.Clone();
+            newEnrollmentStates[courseIndex] = newState;
 
             var hardPenalty = HardPenalty;
             var classStates = ClassStates;
@@ -1417,7 +1382,7 @@ namespace Timetabling.Internal
                         oldRoomId = oldClass.PossibleRooms[oldClassState.Room].Id;
                         var oldRoomCapacity = rooms[oldRoomId].Capacity;
                         oldRoomCapacityPenalty = oldAttendees > oldRoomCapacity
-                            ? CapacityOverflowBase + (oldAttendees - oldRoomCapacity) / CapacityOverflowRate
+                            ? RoomCapacityOverflowBase + (oldAttendees - oldRoomCapacity) / RoomCapacityOverflowRate
                             : 0;
                         hardPenalty += oldRoomCapacityPenalty;
                     }
@@ -1431,7 +1396,7 @@ namespace Timetabling.Internal
                     hardPenalty -= oldClassState.RoomCapacityPenalty;
                     hardPenalty -= oldClassState.ClassCapacityPenalty;
                     var oldClassCapacityPenalty = oldAttendees > oldClassCapacity
-                        ? CapacityOverflowBase + (oldAttendees - oldClassCapacity) / CapacityOverflowRate
+                        ? ClassCapacityOverflowBase + (oldAttendees - oldClassCapacity) / ClassCapacityOverflowRate
                         : 0;
                     classUpdates.Add(new Override<ClassState>(oldClassId,
                         oldClassState.WithAttendees(oldAttendees, oldClassCapacityPenalty, oldRoomCapacityPenalty)));
@@ -1449,7 +1414,7 @@ namespace Timetabling.Internal
                         newRoomId = newClass.PossibleRooms[newClassState.Room].Id;
                         var newRoomCapacity = rooms[newRoomId].Capacity;
                         newRoomCapacityPenalty = newAttendees > newRoomCapacity
-                            ? CapacityOverflowBase + (newAttendees - newRoomCapacity) / CapacityOverflowRate
+                            ? RoomCapacityOverflowBase + (newAttendees - newRoomCapacity) / RoomCapacityOverflowRate
                             : 0;
                         hardPenalty += newRoomCapacityPenalty;
                     }
@@ -1463,7 +1428,7 @@ namespace Timetabling.Internal
                     hardPenalty -= newClassState.RoomCapacityPenalty;
                     hardPenalty -= newClassState.ClassCapacityPenalty;
                     var newClassCapacityPenalty = newAttendees > newClassCapacity
-                        ? CapacityOverflowBase + (newAttendees - newClassCapacity) / CapacityOverflowRate
+                        ? ClassCapacityOverflowBase + (newAttendees - newClassCapacity) / ClassCapacityOverflowRate
                         : 0;
                     classUpdates.Add(new Override<ClassState>(newClassId,
                         newClassState.WithAttendees(newAttendees, newClassCapacityPenalty, newRoomCapacityPenalty)));
@@ -1495,7 +1460,7 @@ namespace Timetabling.Internal
                         oldRoomId = oldClass.PossibleRooms[oldClassState.Room].Id;
                         var oldRoomCapacity = rooms[oldRoomId].Capacity;
                         oldRoomCapacityPenalty = oldAttendees > oldRoomCapacity
-                            ? CapacityOverflowBase + (oldAttendees - oldRoomCapacity) / CapacityOverflowRate
+                            ? RoomCapacityOverflowBase + (oldAttendees - oldRoomCapacity) / RoomCapacityOverflowRate
                             : 0;
                         hardPenalty += oldRoomCapacityPenalty;
                     }
@@ -1509,7 +1474,7 @@ namespace Timetabling.Internal
                     hardPenalty -= oldClassState.RoomCapacityPenalty;
                     hardPenalty -= oldClassState.ClassCapacityPenalty;
                     var oldClassCapacityPenalty = oldAttendees > oldClassCapacity
-                        ? CapacityOverflowBase + (oldAttendees - oldClassCapacity) / CapacityOverflowRate
+                        ? ClassCapacityOverflowBase + (oldAttendees - oldClassCapacity) / ClassCapacityOverflowRate
                         : 0;
                     classUpdates.Add(new Override<ClassState>(oldClassId,
                         oldClassState.WithAttendees(oldAttendees, oldClassCapacityPenalty, oldRoomCapacityPenalty)));
@@ -1534,7 +1499,7 @@ namespace Timetabling.Internal
                         newRoomId = newClass.PossibleRooms[newClassState.Room].Id;
                         var newRoomCapacity = rooms[newRoomId].Capacity;
                         newRoomCapacityPenalty = newAttendees > newRoomCapacity
-                            ? CapacityOverflowBase + (newAttendees - newRoomCapacity) / CapacityOverflowRate
+                            ? RoomCapacityOverflowBase + (newAttendees - newRoomCapacity) / RoomCapacityOverflowRate
                             : 0;
                         hardPenalty += newRoomCapacityPenalty;
                     }
@@ -1548,7 +1513,7 @@ namespace Timetabling.Internal
                     hardPenalty -= newClassState.RoomCapacityPenalty;
                     hardPenalty -= newClassState.ClassCapacityPenalty;
                     var newClassCapacityPenalty = newAttendees > newClassCapacity
-                        ? CapacityOverflowBase + (newAttendees - newClassCapacity) / CapacityOverflowRate
+                        ? ClassCapacityOverflowBase + (newAttendees - newClassCapacity) / ClassCapacityOverflowRate
                         : 0;
                     classUpdates.Add(new Override<ClassState>(newClassId,
                         newClassState.WithAttendees(newAttendees, newClassCapacityPenalty, newRoomCapacityPenalty)));
@@ -1559,61 +1524,61 @@ namespace Timetabling.Internal
             var travelTimes = problem.TravelTimes;
 
             int conflictingPairs;
-            if (oldConfigIndex == newConfigIndex && updates == 1)
-            {
-                // Single update, O(n) operation
-                conflictingPairs = studentState.ConflictingPairs;
-                for (var i = 0; i < enrollmentStates.Length; i++)
-                {
-                    var enrollmentState = enrollmentStates[i];
-                    var courseId = studentData.Courses[i];
-                    var subparts = courses[courseId]
-                        .Configurations[enrollmentState.ConfigIndex]
-                        .Subparts;
+            //if (oldConfigIndex == newConfigIndex && updates == 1)
+            //{
+            //    // Single update, O(n) operation
+            //    conflictingPairs = studentState.ConflictingPairs;
+            //    for (var i = 0; i < newEnrollmentStates.Length; i++)
+            //    {
+            //        var enrollmentState = newEnrollmentStates[i];
+            //        var courseId = studentData.Courses[i];
+            //        var subparts = courses[courseId]
+            //            .Configurations[enrollmentState.ConfigIndex]
+            //            .Subparts;
 
-                    var classIndexes = enrollmentState.Subparts;
-                    for (var j = 0; j < classIndexes.Length; j++)
-                    {
-                        var classObject = subparts[j].Classes[classIndexes[j]];
-                        var classId = classObject.Id;
-                        if (classId == @class)
-                        {
-                            continue;
-                        }
+            //        var classIndexes = enrollmentState.Subparts;
+            //        for (var j = 0; j < classIndexes.Length; j++)
+            //        {
+            //            var classObject = subparts[j].Classes[classIndexes[j]];
+            //            var classId = classObject.Id;
+            //            if (classId == @class)
+            //            {
+            //                continue;
+            //            }
 
-                        var classState = classStates[classId];
-                        var cSchedule = classObject.PossibleSchedules[classState.Time];
-                        var cRoom = classState.Room;
+            //            var classState = classStates[classId];
+            //            var cSchedule = classObject.PossibleSchedules[classState.Time];
+            //            var cRoom = classState.Room;
 
-                        int oldTravelTime;
-                        int newTravelTime;
-                        if (cRoom >= 0)
-                        {
-                            var cRoomId = classObject.PossibleRooms[classState.Room].Id;
-                            oldTravelTime = oldRoomId >= 0 ? travelTimes[oldRoomId, cRoomId] : 0;
-                            newTravelTime = newRoomId >= 0 ? travelTimes[newRoomId, cRoomId] : 0;
-                        }
-                        else
-                        {
-                            oldTravelTime = 0;
-                            newTravelTime = 0;
-                        }
+            //            int oldTravelTime;
+            //            int newTravelTime;
+            //            if (cRoom >= 0)
+            //            {
+            //                var cRoomId = classObject.PossibleRooms[classState.Room].Id;
+            //                oldTravelTime = oldRoomId >= 0 ? travelTimes[oldRoomId, cRoomId] : 0;
+            //                newTravelTime = newRoomId >= 0 ? travelTimes[newRoomId, cRoomId] : 0;
+            //            }
+            //            else
+            //            {
+            //                oldTravelTime = 0;
+            //                newTravelTime = 0;
+            //            }
 
-                        // ReSharper disable PossibleNullReferenceException
-                        if (oldSchedule.Overlaps(cSchedule, oldTravelTime))
-                        {
-                            conflictingPairs--;
-                        }
+            //            // ReSharper disable PossibleNullReferenceException
+            //            if (oldSchedule.Overlaps(cSchedule, oldTravelTime))
+            //            {
+            //                conflictingPairs--;
+            //            }
 
-                        if (newSchedule.Overlaps(cSchedule, newTravelTime))
-                        {
-                            conflictingPairs++;
-                        }
-                        // ReSharper restore PossibleNullReferenceException
-                    }
-                }
-            }
-            else
+            //            if (newSchedule.Overlaps(cSchedule, newTravelTime))
+            //            {
+            //                conflictingPairs++;
+            //            }
+            //            // ReSharper restore PossibleNullReferenceException
+            //        }
+            //    }
+            //}
+            //else
             {
                 // Multiple updates, O(n²) operation
 
@@ -1621,9 +1586,9 @@ namespace Timetabling.Internal
                 var count = 0;
                 var studentClasses = new List<(Schedule schedule, int roomId)>();
                 conflictingPairs = 0;
-                for (var i = 0; i < enrollmentStates.Length; i++)
+                for (var i = 0; i < newEnrollmentStates.Length; i++)
                 {
-                    var enrollmentState = enrollmentStates[i];
+                    var enrollmentState = newEnrollmentStates[i];
                     var courseId = studentCourses[i];
                     var subparts = courses[courseId]
                         .Configurations[enrollmentState.ConfigIndex]
@@ -1672,7 +1637,7 @@ namespace Timetabling.Internal
                 ClassConflicts,
                 RoomsUnavailable,
                 classStates.With(classUpdates),
-                studentStates.With(new Override<StudentState>(student, new StudentState(enrollmentStates, conflictingPairs))),
+                studentStates.With(new Override<StudentState>(studentId, new StudentState(newEnrollmentStates, conflictingPairs))),
                 ConstraintStates);
         }
 

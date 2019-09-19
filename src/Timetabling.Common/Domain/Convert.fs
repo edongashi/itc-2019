@@ -263,14 +263,14 @@ module Convert =
 
       let schedule = classData.FindSchedule(start, days, weeks)
       let s'' = s'.WithTime(classId, schedule)
+      s''
+      //let studentFolder (s : Internal.Solution) student =
+      //  try
+      //    let studentId = studentId student
+      //    s.WithEnrollment(studentId, classId)
+      //  with _ -> s
 
-      let studentFolder (s : Internal.Solution) student =
-        try
-          let studentId = studentId student
-          s.WithEnrollment(studentId, classId)
-        with _ -> s
-
-      cls.Students |> List.fold studentFolder s''
+      //cls.Students |> List.fold studentFolder s''
 
     solution.Classes
     |> List.fold folder problem.Instance.InitialSolution

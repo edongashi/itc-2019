@@ -28,8 +28,8 @@ module Solution =
   let withRoom (room : int) (cls : int) (solution : Solution) =
     solution.WithRoom(cls, room)
 
-  let withEnrollment (cls : int) (student : int) (solution : Solution) =
-    solution.WithEnrollment(student, cls)
+  let withEnrollment (chain : int) (student : int) (solution : Solution) =
+    solution.WithEnrollment(student, chain)
 
   let private constraints (solution : Solution) =
     solution.HardConstraintStates()
@@ -59,6 +59,7 @@ module Solution =
        SoftPenaltyNormalized = solution.NormalizedSoftPenalty
        SearchPenalty = solution.SearchPenalty
        ClassConflicts = solution.ClassConflicts
+       ClassOverflows = solution.ClassCapacityPenalty()
        RoomsUnavailable = solution.RoomsUnavailable
        FailedHardConstraints = solution.FailedHardConstraints()
        TimePenalty = solution.TimePenalty()

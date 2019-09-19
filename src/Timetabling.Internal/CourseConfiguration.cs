@@ -10,6 +10,7 @@ namespace Timetabling.Internal
             Id = id;
             Subparts = subparts;
             Baseline = FindBaseline(subparts);
+            ClassChains = FindChains(subparts);
         }
 
         public readonly int Id;
@@ -18,21 +19,29 @@ namespace Timetabling.Internal
 
         internal readonly int[] Baseline;
 
+        internal readonly int[][] ClassChains;
+
         internal IEnumerable<Class> Classes => Subparts.SelectMany(s => s.Classes);
 
-        private static int[] FindBaseline(Subpart[] subparts)
+        private static int[][] FindChains(Subpart[] subparts)
         {
             var count = subparts.Length;
             if (count == 0)
             {
-                return null;
+                return new int[0][];
             }
 
-            var solution = new(int index, int classid)[count];
+            List<List<(int index, int classId)>> chains = new List<List<(int index, int classId)>>();
 
-            bool Set(int index)
+            void Chain(int level, List<(int index, int classId)> current)
             {
-                var classes = subparts[index].Classes;
+                if (level == count)
+                {
+                    chains.Add(current);
+                    return;
+                }
+
+                var classes = subparts[level].Classes;
                 for (var i = 0; i < classes.Length; i++)
                 {
                     var @class = classes[i];
@@ -45,7 +54,59 @@ namespace Timetabling.Internal
                     if (@class.ParentId >= 0)
                     {
                         var found = false;
-                        for (var j = index - 1; j >= 0; j--)
+                        for (var j = level - 1; j >= 0; j--)
+                        {
+                            if (current[j].classId == @class.ParentId)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found)
+                        {
+                            continue;
+                        }
+                    }
+
+                    var clone = current.ToList();
+                    clone.Add((i, classId));
+                    Chain(level + 1, clone);
+                }
+            }
+
+            Chain(0, new List<(int index, int classId)>());
+            return chains
+                .Select(outer => outer.Select(inner => inner.index).ToArray())
+                .ToArray();
+        }
+
+        private static int[] FindBaseline(Subpart[] subparts)
+        {
+            var count = subparts.Length;
+            if (count == 0)
+            {
+                return null;
+            }
+
+            var solution = new (int index, int classid)[count];
+
+            bool Set(int level)
+            {
+                var classes = subparts[level].Classes;
+                for (var i = 0; i < classes.Length; i++)
+                {
+                    var @class = classes[i];
+                    if (@class.Capacity <= 0)
+                    {
+                        continue;
+                    }
+
+                    var classId = @class.Id;
+                    if (@class.ParentId >= 0)
+                    {
+                        var found = false;
+                        for (var j = level - 1; j >= 0; j--)
                         {
                             if (solution[j].classid == @class.ParentId)
                             {
@@ -60,10 +121,10 @@ namespace Timetabling.Internal
                         }
                     }
 
-                    solution[index] = (i, classId);
-                    if (index < count - 1)
+                    solution[level] = (i, classId);
+                    if (level < count - 1)
                     {
-                        if (Set(index + 1))
+                        if (Set(level + 1))
                         {
                             return true;
                         }

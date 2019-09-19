@@ -9,8 +9,8 @@ open Timetabling.Common.Domain
 open System.Diagnostics
 
 module Solver =
-  let temperatureInitial   = 1E-3
-  let temperatureRestart   = 1E-5
+  let temperatureInitial    = 1E-3
+  let temperatureRestart    = 1E-4
   let temperatureChangeSlow = 0.999999
   let temperatureChangeFast = 0.99999
   let maxTimeout = 1_000_000
@@ -21,11 +21,11 @@ module Solver =
   let hardPenalizationDecay    = 0.9
 
   let softPenalizationRate       = 1.0
-  let softPenalizationFlat       = 0.0
-  let softPenalizationConflicts  = 0.001
-  let softPenalizationStudents   = 0.001
-  let softPenalizationAssignment = 0.001
-  let softPenalizationDecayFlat  = 0.0001
+  let softPenalizationFlat       = 0.00001
+  let softPenalizationConflicts  = 0.0001
+  let softPenalizationStudents   = 0.00001
+  let softPenalizationAssignment = 0.0001
+  let softPenalizationDecayFlat  = 0.00001
   let softPenalizationDecayRate  = 0.6
 
   let penalizeAssignment conflicts penalty =
@@ -91,7 +91,7 @@ module Solver =
       let hasTimeConflict = conflicts.Time > 0
       let hasRoomConflict = conflicts.Room > 0
 
-      let studentPenalty = 
+      let studentPenalty =
         if studentConflicts.ContainsKey cls
         then studentConflicts.[cls]
         else 0
@@ -154,23 +154,12 @@ module Solver =
           yield (fun s -> Mutate.enrollment (next random) (next random) s)
       ] |> Array.ofList
 
-    let unfeasibleMutations =
-      [
-        if instance.TimeVariables.Length > 0 then
-          yield (fun s -> Mutate.time penalties (next random) (next random) s)
-          yield (fun s -> Mutate.variable penalties (next random) (next random) s)
-        if instance.RoomVariables.Length > 0 then
-          yield (fun s -> Mutate.room penalties (next random) (next random) s)
-          yield (fun s -> Mutate.variable penalties (next random) (next random) s)
-      ] |> Array.ofList
-
     let mutate (s : Solution) =
-      let mutationsList = if s.HardPenalty = 0 then mutations else unfeasibleMutations
       let randomCount = Math.Max(1, (nextN 7 random) - 3) - 1
       let mutable y = s
       let mutable delta = 0.0
       for _ in 0..randomCount do
-        let (y', d) = y |> (nextIndex random mutationsList)
+        let (y', d) = y |> (nextIndex random mutations)
         delta <- delta + d
         y <- y'
       y, delta
@@ -198,7 +187,7 @@ module Solver =
                         AssignmentPenalty = assignmentPenalty
                         FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty |}
           |}
-        if cycle % 1_000_000ul = 0ul then
+        if cycle % 500_000ul = 0ul then
           printfn "Saving backup..."
           best
           |> Solution.serialize

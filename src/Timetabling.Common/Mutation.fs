@@ -39,5 +39,5 @@ module Mutate =
 
   let enrollment random1 random2 (solution : Solution) =
     let variable = solution.Problem.StudentVariables |> randomIndex random1
-    let value = variable.LooseValues |> randomIndex random2
-    solution |> Solution.withEnrollment value variable.Student, 0.0
+    let value = Random.toInt variable.ChainCount random2
+    solution |> Solution.withEnrollment value variable.VariableId, 0.0
