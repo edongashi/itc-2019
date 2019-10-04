@@ -247,19 +247,19 @@ namespace Timetabling.Internal
 
         public readonly Solution InitialSolution;
 
-        internal readonly double WorstCaseClassConflicts;
+        public readonly double WorstCaseClassConflicts;
 
-        internal readonly double WorstCaseRoomsUnavailable;
+        public readonly double WorstCaseRoomsUnavailable;
 
-        internal readonly double WorstSoftDistributionPenalty;
+        public readonly double WorstSoftDistributionPenalty;
 
-        internal readonly double WorstRoomPenalty;
+        public readonly double WorstRoomPenalty;
 
-        internal readonly double WorstTimePenalty;
+        public readonly double WorstTimePenalty;
 
-        internal readonly double WorstStudentPenalty;
+        public readonly double WorstStudentPenalty;
 
-        internal readonly double WorstSoftPenalty;
+        public readonly double WorstSoftPenalty;
 
         private CourseVariable[] GetStudentVariables()
         {
@@ -366,6 +366,17 @@ namespace Timetabling.Internal
             return (timeVariables.ToArray(), roomVariables.ToArray(), timeSparse, roomSparse);
         }
 
+        private static int PullOne<T>(T[] arr, int id)
+        {
+            if (arr.Length == 0)
+            {
+                return -1;
+            }
+
+            var val = Math.Min(3, arr.Length);
+            return id % val;
+        }
+
         private Solution CreateInitialSolution()
         {
             const int chunkSize = 256;
@@ -377,8 +388,8 @@ namespace Timetabling.Internal
             {
                 var classData = Classes[i];
                 classStates[i] = new ClassState(
-                    classData.PossibleRooms.Length > 0 ? 0 : -1,
-                    classData.PossibleSchedules.Length > 0 ? 0 : throw new InvalidOperationException(CorruptInstance),
+                    PullOne(classData.PossibleRooms, 1),
+                    PullOne(classData.PossibleSchedules, 1),
                     0, 0, 0, 0);
             }
 
@@ -396,16 +407,11 @@ namespace Timetabling.Internal
                 foreach (var courseId in studentData.Courses)
                 {
                     var course = Courses[courseId];
-                    if (course.BaselineConfiguration == -1)
-                    {
-                        throw new InvalidOperationException(CorruptInstance);
-                    }
-
-                    var enrollmentState = new EnrollmentState(course.BaselineConfiguration, course.Baseline);
+                    var chain = course.ClassChains[i % course.ClassChains.Length];
+                    var enrollmentState = new EnrollmentState(chain.ConfigIndex, chain.Indexes);
                     enrollmentStates.Add(enrollmentState);
-
                     var enrolledSubparts = enrollmentState.Subparts;
-                    var config = course.Configurations[course.BaselineConfiguration];
+                    var config = course.Configurations[chain.ConfigIndex];
                     for (var j = 0; j < enrolledSubparts.Length; j++)
                     {
                         var subpart = config.Subparts[j];

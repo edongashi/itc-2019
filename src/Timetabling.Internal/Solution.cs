@@ -135,8 +135,8 @@ namespace Timetabling.Internal
         public readonly Problem Problem;
 
         public double SearchPenalty => HardPenalty > 0
-          ? 0.02d * HardPenalty + 0.1d * Math.Ceiling(10d * NormalizedSoftPenalty)
-          : NormalizedSoftPenalty;
+          ? 0.01d * HardPenalty + 0.01d * Math.Ceiling(100d * (1E-3 * ClassOverflows + NormalizedSoftPenalty))
+          : 1E-3 * ClassOverflows + NormalizedSoftPenalty;
 
         internal (int hardPenalty, int softPenalty) CalculatePenalty()
         {

@@ -1,4 +1,5 @@
-﻿using Timetabling.Internal.Utils;
+﻿using System.Linq;
+using Timetabling.Internal.Utils;
 
 namespace Timetabling.Internal
 {
@@ -14,8 +15,8 @@ namespace Timetabling.Internal
             Id = id;
             ParentId = parentId;
             Capacity = capacity;
-            PossibleRooms = possibleRooms;
-            PossibleSchedules = possibleSchedules;
+            PossibleRooms = possibleRooms.OrderBy(r => r.Penalty).ToArray();
+            PossibleSchedules = possibleSchedules.OrderBy(s => s.Penalty).ToArray();
         }
 
         public readonly int Id;

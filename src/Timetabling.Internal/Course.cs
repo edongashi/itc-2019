@@ -10,18 +10,6 @@ namespace Timetabling.Internal
         {
             Id = id;
             Configurations = configurations;
-            BaselineConfiguration = -1;
-            for (var i = 0; i < configurations.Length; i++)
-            {
-                var config = configurations[i];
-                if (config.Baseline != null)
-                {
-                    Baseline = config.Baseline;
-                    BaselineConfiguration = i;
-                    break;
-                }
-            }
-
             ClassChains = Configurations
                 .SelectMany((config, index) => config.ClassChains.Select(c => new Chain(id, index, c)))
                 .ToArray();
@@ -30,10 +18,6 @@ namespace Timetabling.Internal
         public readonly int Id;
 
         public readonly CourseConfiguration[] Configurations;
-
-        internal readonly int BaselineConfiguration;
-
-        internal readonly int[] Baseline;
 
         internal readonly Chain[] ClassChains;
 
