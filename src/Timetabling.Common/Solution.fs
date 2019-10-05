@@ -9,6 +9,10 @@ type ClassPenalties =
     Rooms : float []
     Times : float [] }
 
+type PenalizedVariable =
+  | PenalizedRoomVariable of cls : int * index : int * penalty : int
+  | PenalizedTimeVariable of cls : int * index : int * penalty : int
+
 module ClassPenalties =
   let private constant n = fun _ -> n
 
@@ -51,6 +55,101 @@ module Solution =
     Convert.toSolution problem solution runtime
     |> Serialize.solution info seed
     |> Serialize.toXml
+
+  let classPenaltiesHard (solution : Solution) =
+    let timeVariablesSparse = solution.Problem.TimeVariablesSparse
+    let roomVariablesSparse = solution.Problem.RoomVariablesSparse
+    let conflicts = solution.ViolatingClasses()
+    let timePenalties =
+      conflicts
+      |> Seq.choose (fun pair ->
+        let cls = pair.Key
+        let penalty = pair.Value.Time
+        if penalty > 0
+        then Some (PenalizedTimeVariable (cls, solution.GetTimeIndex cls, penalty))
+        else None)
+    let roomPenalties =
+      conflicts
+      |> Seq.choose (fun pair ->
+        let cls = pair.Key
+        let penalty = pair.Value.Room
+        if penalty > 0
+        then Some (PenalizedRoomVariable (cls, solution.GetRoomIndex cls, penalty))
+        else None)
+    timePenalties
+    |> Seq.append roomPenalties
+    |> Seq.sortBy (function
+      | PenalizedTimeVariable (cls, _, penalty) -> penalty, timeVariablesSparse.[cls].MaxValue
+      | PenalizedRoomVariable (cls, _, penalty) -> penalty, roomVariablesSparse.[cls].MaxValue)
+    |> List.ofSeq
+
+  let classPenaltiesSoft (solution : Solution) =
+    let problem = solution.Problem
+    let classes = problem.Classes
+    let optimization = { Time = problem.TimePenalty
+                         Room = problem.RoomPenalty
+                         Distribution = problem.DistributionPenalty
+                         Student = problem.StudentPenalty }
+    let timeVariables = problem.TimeVariables
+    let roomVariables = problem.RoomVariables
+    let timeVariablesSparse = problem.TimeVariablesSparse
+    let roomVariablesSparse = problem.RoomVariablesSparse
+    let conflicts = solution.SoftViolatingClasses()
+    let studentConflicts = solution.StudentConflictingClasses()
+    let timePenalties =
+      timeVariables
+      |> Seq.choose (fun var ->
+        let cls = var.Class
+        let classTime = solution.GetTimeIndex cls
+        let classData = classes.[cls]
+        let distributionPenalty =
+          if conflicts.ContainsKey cls
+          then conflicts.[cls].Time
+          else 0
+        let assignmentPenalty =
+          classData.PossibleSchedules.[classTime].Penalty - classData.MinTimePenalty
+        let studentPenalty =
+          if studentConflicts.ContainsKey cls
+          then studentConflicts.[cls]
+          else 0
+        let penalty =
+          distributionPenalty * optimization.Distribution
+          + assignmentPenalty * optimization.Time
+          + studentPenalty
+        if penalty > 0
+        then Some (PenalizedTimeVariable (cls, classTime, penalty))
+        else None)
+    let roomPenalties =
+      roomVariables
+      |> Seq.choose (fun var ->
+        let cls = var.Class
+        let classRoom = solution.GetRoomIndex cls
+        let classData = classes.[cls]
+        let distributionPenalty =
+          if conflicts.ContainsKey cls
+          then conflicts.[cls].Room
+          else 0
+        let assignmentPenalty =
+          if classRoom >= 0
+          then classData.PossibleRooms.[classRoom].Penalty - classData.MinRoomPenalty
+          else 0
+        let studentPenalty =
+          if studentConflicts.ContainsKey cls
+          then studentConflicts.[cls]
+          else 0
+        let penalty =
+          distributionPenalty * optimization.Distribution
+          + assignmentPenalty * optimization.Room
+          + studentPenalty
+        if penalty > 0
+        then Some (PenalizedRoomVariable (cls, classRoom, penalty))
+        else None)
+    timePenalties
+    |> Seq.append roomPenalties
+    |> Seq.sortBy (function
+      | PenalizedTimeVariable (cls, _, penalty) -> penalty, timeVariablesSparse.[cls].MaxValue
+      | PenalizedRoomVariable (cls, _, penalty) -> penalty, roomVariablesSparse.[cls].MaxValue)
+    |> List.ofSeq
 
   let stats (solution : Solution) =
     let problem = solution.Problem
