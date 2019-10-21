@@ -304,7 +304,7 @@ module Parse =
       let! requirement = xml |> requirement
       return { Type = distributionType
                Requirement = requirement
-               Classes = classes }
+               Classes = classes |> List.distinct }
     }
 
   let distributions xml =
@@ -312,7 +312,7 @@ module Parse =
     result {
       do! xml |> ensureName "distributions"
       let! distributions = traverse "distribution" distribution
-      return distributions
+      return distributions |> List.filter (fun d -> List.length d.Classes > 1)
     }
 
   let studentCourse xml =
