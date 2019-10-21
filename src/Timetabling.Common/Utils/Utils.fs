@@ -18,6 +18,8 @@ module Utils =
   let inline min0 x = Math.Max(0.0, x)
   let inline min1 x = Math.Max(1.0, x)
   let inline abs (x : float) = Math.Abs(x)
+  let inline vfst tup = let struct (v, _) = tup in v
+  let inline vsnd tup = let struct (_, v) = tup in v
 
 module Option =
   let inline private (>>=) x f = Option.bind f x

@@ -342,6 +342,13 @@ namespace Timetabling.Internal
             return result;
         }
 
+        public int ConstraintPenalty(int constraint)
+        {
+            var constraintInstance = Problem.Constraints[constraint];
+            var (hardPenalty, softPenalty) = constraintInstance.Evaluate(Problem, this);
+            return hardPenalty + softPenalty;
+        }
+
         public Dictionary<int, ClassConflicts> ViolatingClasses()
         {
             var result = new Dictionary<int, ClassConflicts>();

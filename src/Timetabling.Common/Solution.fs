@@ -141,7 +141,7 @@ module Solution =
           distributionPenalty * optimization.Distribution
           + assignmentPenalty * optimization.Room
           + studentPenalty
-        if penalty > 0
+        if classData.PossibleRooms.Length > 0 && penalty > 0
         then Some (PenalizedRoomVariable (cls, classRoom, penalty))
         else None)
     timePenalties
@@ -150,6 +150,81 @@ module Solution =
       | PenalizedTimeVariable (cls, _, penalty) -> penalty, timeVariablesSparse.[cls].MaxValue
       | PenalizedRoomVariable (cls, _, penalty) -> penalty, roomVariablesSparse.[cls].MaxValue)
     |> List.ofSeq
+
+  let variableClass variable =
+    match variable with
+    | PenalizedTimeVariable (cls, _, _)
+    | PenalizedRoomVariable (cls, _, _) -> cls
+
+  let variableIndex variable =
+    match variable with
+    | PenalizedTimeVariable (_, index, _)
+    | PenalizedRoomVariable (_, index, _) -> index
+
+  let variablePenalty variable =
+    match variable with
+    | PenalizedTimeVariable (_, _, penalty)
+    | PenalizedRoomVariable (_, _, penalty) -> penalty
+
+  let penalize (increment : float) (penalties : ClassPenalties[]) (solution : Solution) =
+    let set (index : int) (mutator : 'a -> 'a) (arr : 'a[]) =
+      let clone = arr |> Array.copy
+      clone.[index] <- mutator clone.[index]
+      clone
+
+    let list =
+      if solution.HardPenalty > 0
+      then classPenaltiesHard solution
+      else classPenaltiesSoft solution
+
+    let penalizeClass penalties variable =
+      let cls = variableClass variable
+      penalties
+      |> set cls
+        (fun clsPenalties ->
+           match variable with
+           | PenalizedTimeVariable (_, index, _)
+             -> { clsPenalties with
+                    Times = set index (fun x -> x + increment) clsPenalties.Times }
+           | PenalizedRoomVariable (_, index, _)
+             -> { clsPenalties with
+                    Rooms = set index (fun x -> x + increment) clsPenalties.Rooms })
+
+    if List.isEmpty list
+    then
+      penalties
+    else
+      list
+      |> List.truncate 10
+      |> List.fold penalizeClass penalties
+
+  let incrementWeights (weights : int[]) (solution : Solution) =
+    let problem = solution.Problem
+    problem.Constraints
+    |> Array.mapi (
+      fun i c ->
+        let struct (hard, soft) = c.Evaluate(problem, solution)
+        if hard > 0 || soft > 0 then
+          weights.[i] + 1
+        else
+          0
+    )
+
+  let worstConstraints (weights : int[]) (solution : Solution) =
+    let problem = solution.Problem
+    problem.Constraints
+    |> Seq.mapi (
+      fun i c ->
+        let struct (hard, soft) = c.Evaluate(problem, solution)
+        hard, soft, weights.[i], i
+    )
+    |> Seq.filter (fun (hard, soft, _, _) -> hard + soft > 0)
+    |> Seq.sortByDescending id
+    |> List.ofSeq
+
+  let worstHardConstraints (weights : int[]) (solution : Solution) =
+    worstConstraints weights solution
+    |> List.filter (fun (hard, _, _, _) -> hard > 0)
 
   let stats (solution : Solution) =
     let problem = solution.Problem
