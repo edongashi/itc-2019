@@ -219,12 +219,16 @@ module Solution =
         hard, soft, weights.[i], i
     )
     |> Seq.filter (fun (hard, soft, _, _) -> hard + soft > 0)
-    |> Seq.sortByDescending id
+    |> Seq.sortByDescending (fun (hard, soft, weight, id) -> (weight, hard, soft, id))
     |> List.ofSeq
 
   let worstHardConstraints (weights : int[]) (solution : Solution) =
     worstConstraints weights solution
     |> List.filter (fun (hard, _, _, _) -> hard > 0)
+
+  let worstSoftConstraints (weights : int[]) (solution : Solution) =
+    worstConstraints weights solution
+    |> List.filter (fun (_, soft, _, _) -> soft > 0)
 
   let stats (solution : Solution) =
     let problem = solution.Problem
