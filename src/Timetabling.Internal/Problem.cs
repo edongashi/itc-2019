@@ -199,7 +199,8 @@ namespace Timetabling.Internal
             });
             WorstSoftPenalty =
                 WorstSoftDistributionPenalty + WorstRoomPenalty + WorstTimePenalty + WorstStudentPenalty;
-
+            ClassOverflowPenalty = 2d * StudentPenalty / WorstSoftPenalty;
+            HardPenalty = 0.01d;
             InitialSolution = CreateInitialSolution();
         }
 
@@ -218,6 +219,10 @@ namespace Timetabling.Internal
         public readonly int DistributionPenalty;
 
         public readonly int StudentPenalty;
+
+        public readonly double HardPenalty;
+
+        public readonly double ClassOverflowPenalty;
 
         public readonly RoomData[] Rooms;
 

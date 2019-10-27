@@ -85,7 +85,7 @@ namespace Timetabling.Internal
         internal const int RoomCapacityOverflowBase = 0;
         internal const int RoomCapacityOverflowRate = int.MaxValue;
         internal const int ClassCapacityOverflowBase = 1;
-        internal const int ClassCapacityOverflowRate = 2;
+        internal const int ClassCapacityOverflowRate = 1;
 
         internal readonly ChunkedArray<ClassState> ClassStates;
         internal readonly ChunkedArray<StudentState> StudentStates;
@@ -135,8 +135,8 @@ namespace Timetabling.Internal
         public readonly Problem Problem;
 
         public double SearchPenalty => HardPenalty > 0
-          ? 0.01d * HardPenalty + 0.01d * Math.Ceiling(100d * (1E-3 * ClassOverflows + NormalizedSoftPenalty))
-          : 1E-3 * ClassOverflows + NormalizedSoftPenalty;
+          ? Problem.HardPenalty * HardPenalty + 0.01d * Math.Ceiling(100d * (Problem.ClassOverflowPenalty * ClassOverflows + NormalizedSoftPenalty))
+          : Problem.ClassOverflowPenalty * ClassOverflows + NormalizedSoftPenalty;
 
         internal (int hardPenalty, int softPenalty) CalculatePenalty()
         {
@@ -340,6 +340,27 @@ namespace Timetabling.Internal
             });
 
             return result;
+        }
+
+        public int ClassSoftPenalty(int @class)
+        {
+            var cls = Problem.Classes[@class];
+            var state = ClassStates[@class];
+            int penalty = 0;
+            if (state.Room >= 0)
+            {
+                penalty += cls.PossibleRooms[state.Room].Penalty;
+            }
+
+            penalty += cls.PossibleSchedules[state.Time].Penalty;
+
+            var constraints = cls.AllConstraints;
+            for (var i = 0; i < constraints.Length; i++)
+            {
+                penalty += constraints[i].Evaluate(Problem, this).softPenalty;
+            }
+
+            return penalty;
         }
 
         public int ConstraintPenalty(int constraint)
