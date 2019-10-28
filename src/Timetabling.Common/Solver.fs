@@ -9,10 +9,9 @@ open Timetabling.Common.Domain
 open System.Diagnostics
 
 module Solver =
-  let temperatureInitial    = 1.0
+  let temperatureInitial    = 1E-2
   let temperatureRestart    = 1E-3
   let temperatureChange     = 0.9999995
-  let temperatureChangeSlow = 0.9999995
   let maxTimeout = 1_000_000
 
   let hardPenalizationFlat     = 0.004
@@ -31,10 +30,8 @@ module Solver =
 
 
   // Lundy and Mees cooling function
-  let tmax = 500.0
-  let tmin = 25.0
-  let niterations = 2.0
-  let beta = (tmax - tmin) / ((niterations - 1.0) * tmax * tmin)
+  let beta = 0.038
+  let betaUnfeasible = 4E-3
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
@@ -423,7 +420,10 @@ module Solver =
 
       timeout <- timeout + 1
       localTimeout <- localTimeout + 1
-      t <- t / (1.0 + beta * t)
+      if current.HardPenalty = 0 then
+        t <- t / (1.0 + beta * t)
+      else 
+        t <- t / (1.0 + betaUnfeasible * t)
       //if current.HardPenalty = 0 || candidatePenalty < currentPenalty then
       //  t <- t * temperatureChange
       //else
