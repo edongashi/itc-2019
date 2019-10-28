@@ -497,7 +497,7 @@ module Solver =
 
       if current.HardPenalty = 0 && timeout > 10_000 then
         penalties <- scalePenalties penalties current
-        penalties <- current |> penalize (next random) 0.005 penalties
+        penalties <- current |> penalize 0.005 (next random) penalties
         assignmentPenalty <- dynamicPenalty penalties current
         localPenalty <- Double.PositiveInfinity
         localBan <- 100_000
