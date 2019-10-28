@@ -20,7 +20,7 @@ module Solver =
   let hardPenalizationPressure = 0.0
   let hardPenalizationDecay    = 0.9
 
-  let softPenalizationRate         = 1.1
+  let softPenalizationRate         = 0.99
   let softPenalizationFlat         = 1E-2
   let softPenalizationConflicts    = 1E-2
   let softPenalizationStudentsTime = 1E-2
@@ -438,6 +438,7 @@ module Solver =
         penalties <- initialPenalties
         assignmentPenalty <- 0.0
         localPenalty <- Double.PositiveInfinity
+        localTimeout <- 0
         currentPenalty <- current.SearchPenalty
       else if timeout > maxTimeout then
         timeout <- 0
