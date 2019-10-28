@@ -20,16 +20,17 @@ module Solver =
   let hardPenalizationPressure = 0.0
   let hardPenalizationDecay    = 0.9
 
-  let softPenalizationRate         = 0.99
-  let softPenalizationFlat         = 1E-3
-  let softPenalizationConflicts    = 1E-3
-  let softPenalizationStudentsTime = 1E-3
-  let softPenalizationStudentsRoom = 1E-5
-  let softPenalizationAssignment   = 1E-3
-  let softPenalizationDecayFlat    = 1E-3
+  let softPenalizationRate         = 1.1
+  let softPenalizationFlat         = 1E-2
+  let softPenalizationConflicts    = 1E-2
+  let softPenalizationStudentsTime = 1E-2
+  let softPenalizationStudentsRoom = 1E-3
+  let softPenalizationAssignment   = 1E-2
+  let softPenalizationDecayFlat    = 1E-2
   let softPenalizationDecayRate    = 0.5
 
-  //Lundy and Mees cooling function
+
+  // Lundy and Mees cooling function
   let tmax = 500.0
   let tmin = 25.0
   let niterations = 2.0
@@ -141,7 +142,7 @@ module Solver =
   let gamma = 0.1
 
   let fstun f f0 noiseCoefficient =
-    1.0 - Math.Exp(-gamma * (f - f0)) + noiseCoefficient * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
+    1.0 - Math.Exp(-gamma * (f - f0)) + gamma * Math.Exp(-noiseCoefficient) // * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
 
   open Timetabling.Internal.Specialized
   let constraintSearch
@@ -351,6 +352,7 @@ module Solver =
                     then temperatureRestart
                     else temperatureInitial
     let mutable weights = Array.replicate instance.Constraints.Length 0
+    let mutable localTimeout = 0
     //let mutable focus: int[] = [||]
     //let worstSoft = instance.WorstSoftPenalty
 
@@ -358,6 +360,9 @@ module Solver =
     //  focus |> Array.sumBy (
     //    fun cls -> (float (s.ClassSoftPenalty(cls))) / worstSoft
     //  )
+
+    let inline randomCoefficient() =
+      8.0 + (next random) * 5.0
 
     while not cancellation.IsCancellationRequested do
       //let noiseCoefficient = 8.0 - float (random |> nextN 4)
@@ -367,10 +372,12 @@ module Solver =
             Best = best |> stats
             Current = current |> stats
             Search = {| Timeout = timeout
+                        LocalTimeout = localTimeout
+                        LocalPenalty = localPenalty
                         Temperature = t
                         Time = stopwatch.Elapsed.TotalSeconds
                         AssignmentPenalty = assignmentPenalty
-                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty 0.0
+                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty (randomCoefficient())
                         MaxTimeout = maxTimeout |}
           |}
         if cycle % 2_000_000ul = 0ul then
@@ -395,6 +402,7 @@ module Solver =
 
       if candidatePenalty < localPenalty then
         timeout <- 0
+        localTimeout <- 0
         if localBan = 0 then
           localPenalty <- candidatePenalty
 
@@ -406,14 +414,15 @@ module Solver =
         assignmentPenalty <- assignmentPenalty'
       else
         let f0 = best.SearchPenalty
-        let nextSearch = fstun candidatePenalty f0 (next random)
-        let currentSearch = fstun currentPenalty f0 (next random)
+        let nextSearch = fstun candidatePenalty f0 (randomCoefficient())
+        let currentSearch = fstun currentPenalty f0 (randomCoefficient())
         if nextSearch < 0.3 && Math.Exp((currentSearch - nextSearch) / t) > next random then
           current <- candidate
           currentPenalty <- candidatePenalty
           assignmentPenalty <- assignmentPenalty'
 
       timeout <- timeout + 1
+      localTimeout <- localTimeout + 1
       t <- t / (1.0 + beta * t)
       //if current.HardPenalty = 0 || candidatePenalty < currentPenalty then
       //  t <- t * temperatureChange
@@ -452,7 +461,7 @@ module Solver =
             let localBest, localOptimum =
               constraintSearch
                 cancellation
-                (fun s -> fstun s.SearchPenalty bestSearch (next random))
+                (fun s -> fstun s.SearchPenalty bestSearch (randomCoefficient()))
                 random
                 worstConstraintIds
                 current
@@ -495,12 +504,13 @@ module Solver =
         localBan <- 100_000
         currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
 
-      if current.HardPenalty = 0 && timeout > 10_000 then
+      if current.HardPenalty = 0 && localTimeout > 500_000 then
         penalties <- scalePenalties penalties current
-        penalties <- current |> penalize 0.005 (next random) penalties
+        //penalties <- current |> penalize 0.009 (next random) penalties
         assignmentPenalty <- dynamicPenalty penalties current
         localPenalty <- Double.PositiveInfinity
-        localBan <- 100_000
+        localTimeout <- 0
+        localBan <- 500_000
         currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
 
       if candidate |> betterThan best then

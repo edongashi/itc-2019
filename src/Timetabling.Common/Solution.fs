@@ -78,7 +78,7 @@ module Solution =
         else None)
     timePenalties
     |> Seq.append roomPenalties
-    |> Seq.sortBy (function
+    |> Seq.sortByDescending (function
       | PenalizedTimeVariable (cls, _, penalty) -> penalty, timeVariablesSparse.[cls].MaxValue
       | PenalizedRoomVariable (cls, _, penalty) -> penalty, roomVariablesSparse.[cls].MaxValue)
     |> List.ofSeq
@@ -146,7 +146,7 @@ module Solution =
         else None)
     timePenalties
     |> Seq.append roomPenalties
-    |> Seq.sortBy (function
+    |> Seq.sortByDescending (function
       | PenalizedTimeVariable (cls, _, penalty) -> penalty, timeVariablesSparse.[cls].MaxValue
       | PenalizedRoomVariable (cls, _, penalty) -> penalty, roomVariablesSparse.[cls].MaxValue)
     |> List.ofSeq
@@ -165,6 +165,19 @@ module Solution =
     match variable with
     | PenalizedTimeVariable (_, _, penalty)
     | PenalizedRoomVariable (_, _, penalty) -> penalty
+
+  let fitnessProportionate (rnd : float) vars =
+    let sum = float (vars |> List.sumBy variablePenalty)
+    vars
+    |> List.fold (
+         fun (acc, total) v ->
+           let penalty = float (v |> variablePenalty) / sum
+           acc @ [v, total + penalty], total + penalty
+       ) ([], 0.0)
+    |> fst
+    |> List.tryFind (fun (_, p) -> rnd < p)
+    |> Option.map fst
+    |> Option.defaultValue (vars |> List.last)
 
   let penalize (increment : float) (rnd : float) (penalties : ClassPenalties[]) (solution : Solution) =
     let set (index : int) (mutator : 'a -> 'a) (arr : 'a[]) =
@@ -195,8 +208,9 @@ module Solution =
       penalties
     else
       list
-      |> List.truncate (solution.Problem.AllClassVariables.Length / 20)
-      |> (fun filtered -> filtered |> List.item (int (rnd * float (List.length filtered))))
+      |> fitnessProportionate rnd
+      //|> List.truncate (solution.Problem.AllClassVariables.Length / 20)
+      //|> (fun filtered -> filtered |> List.item (int (rnd * float (List.length filtered))))
       |>  penalizeClass penalties
 
   let incrementWeights (weights : int[]) (solution : Solution) =

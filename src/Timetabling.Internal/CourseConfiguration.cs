@@ -16,8 +16,6 @@ namespace Timetabling.Internal
 
         public readonly Subpart[] Subparts;
 
-        internal readonly int[] Baseline;
-
         internal readonly int[][] ClassChains;
 
         internal IEnumerable<Class> Classes => Subparts.SelectMany(s => s.Classes);
