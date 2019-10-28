@@ -21,12 +21,12 @@ module Solver =
   let hardPenalizationDecay    = 0.9
 
   let softPenalizationRate         = 0.99
-  let softPenalizationFlat         = 1E-2
-  let softPenalizationConflicts    = 1E-2
-  let softPenalizationStudentsTime = 1E-2
-  let softPenalizationStudentsRoom = 1E-3
-  let softPenalizationAssignment   = 1E-2
-  let softPenalizationDecayFlat    = 1E-2
+  let softPenalizationFlat         = 1E-3
+  let softPenalizationConflicts    = 1E-3
+  let softPenalizationStudentsTime = 1E-3
+  let softPenalizationStudentsRoom = 1E-4
+  let softPenalizationAssignment   = 1E-3
+  let softPenalizationDecayFlat    = 1E-3
   let softPenalizationDecayRate    = 0.5
 
 
