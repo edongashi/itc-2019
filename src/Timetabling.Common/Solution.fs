@@ -166,7 +166,7 @@ module Solution =
     | PenalizedTimeVariable (_, _, penalty)
     | PenalizedRoomVariable (_, _, penalty) -> penalty
 
-  let penalize (increment : float) (penalties : ClassPenalties[]) (solution : Solution) =
+  let penalize (increment : float) (rnd : float) (penalties : ClassPenalties[]) (solution : Solution) =
     let set (index : int) (mutator : 'a -> 'a) (arr : 'a[]) =
       let clone = arr |> Array.copy
       clone.[index] <- mutator clone.[index]
@@ -195,8 +195,9 @@ module Solution =
       penalties
     else
       list
-      |> List.truncate 10
-      |> List.fold penalizeClass penalties
+      |> List.truncate (solution.Problem.AllClassVariables.Length / 20)
+      |> (fun filtered -> filtered |> List.item (int (rnd * float (List.length filtered))))
+      |>  penalizeClass penalties
 
   let incrementWeights (weights : int[]) (solution : Solution) =
     let problem = solution.Problem
