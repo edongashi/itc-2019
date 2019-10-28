@@ -307,7 +307,7 @@ module Solver =
         if instance.StudentVariables.Length > 0 then
           yield (fun s -> Mutate.enrollment (next random) (next random) s)
           yield (fun s -> Mutate.enrollment (next random) (next random) s)
-          yield (fun s -> 
+          yield (fun s ->
             s
             |> Mutate.enrollmentNonPenalized (next random) (next random)
             |> Mutate.enrollmentNonPenalized (next random) (next random), 0.0
@@ -362,7 +362,7 @@ module Solver =
     //  )
 
     let inline randomCoefficient() =
-      8.0 + (next random) * 5.0
+      8.0 + (next random) * 4.0
 
     while not cancellation.IsCancellationRequested do
       //let noiseCoefficient = 8.0 - float (random |> nextN 4)
@@ -392,8 +392,8 @@ module Solver =
 
       let candidate, delta = mutate current
       let assignmentPenalty' = assignmentPenalty + delta |> min0
-      let candidatePenalty = 
-        candidate.SearchPenalty 
+      let candidatePenalty =
+        candidate.SearchPenalty
         + assignmentPenalty'
         //+ (focusPenalty current)
 
@@ -456,7 +456,7 @@ module Solver =
             fun i w -> if worstConstraintIds |> List.contains i then 0 else w
           )
 
-          if worstConstraints |> List.isEmpty |> not 
+          if worstConstraints |> List.isEmpty |> not
           then
             let bestSearch = best.SearchPenalty
             let localBest, localOptimum =
@@ -482,9 +482,9 @@ module Solver =
           //  List.replicate (len / 10 |> int) 0
           //  |> List.map (fun _ -> Math.Min(random |> nextN len, random |> nextN len))
           //  |> List.map (fun id -> worstClasses |> List.item id |> variableClass)
-          //  |> (fun l -> 
-          //        if len > 0 
-          //        then 
+          //  |> (fun l ->
+          //        if len > 0
+          //        then
           //          [
           //            worstClasses
           //            |> List.item (random |> nextN (Math.Min(3, len)))
@@ -494,7 +494,7 @@ module Solver =
           //     )
           //  |> List.distinct
           //  |> Array.ofList
-          
+
           //if current.HardPenalty = 0 then
           //  penalties <- current |> penalize 0.05 (next random) penalties
 
