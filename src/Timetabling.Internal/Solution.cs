@@ -91,6 +91,20 @@ namespace Timetabling.Internal
         internal readonly ChunkedArray<StudentState> StudentStates;
         internal readonly ChunkedArray<ConstraintState> ConstraintStates;
 
+        internal Solution(Solution other)
+            : this(
+                  other.Problem,
+                  other.HardPenalty,
+                  other.SoftPenalty,
+                  other.ClassOverflows,
+                  other.ClassConflicts,
+                  other.RoomsUnavailable,
+                  other.ClassStates,
+                  other.StudentStates,
+                  other.ConstraintStates)
+        { }
+
+
         internal Solution(
             Problem problem,
             int hardPenalty,
@@ -134,7 +148,7 @@ namespace Timetabling.Internal
 
         public readonly Problem Problem;
 
-        const double HardPenaltyFactor = 0.01d;
+        const double HardPenaltyFactor = 0.1d;
 
         public double SearchPenalty => HardPenalty > 0
           ? HardPenaltyFactor * HardPenalty + 0.01d * Math.Ceiling(100d * (Problem.ClassOverflowPenalty * ClassOverflows + NormalizedSoftPenalty))

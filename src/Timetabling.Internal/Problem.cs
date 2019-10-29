@@ -201,6 +201,9 @@ namespace Timetabling.Internal
                 WorstSoftDistributionPenalty + WorstRoomPenalty + WorstTimePenalty + WorstStudentPenalty;
             ClassOverflowPenalty = 2d * StudentPenalty / WorstSoftPenalty;
             InitialSolution = CreateInitialSolution();
+            WorstSoftPenalty = InitialSolution.SoftPenalty;
+            ClassOverflowPenalty = 2d * StudentPenalty / WorstSoftPenalty;
+            InitialSolution = new Solution(InitialSolution);
         }
 
         public readonly string Name;
