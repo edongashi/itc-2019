@@ -136,9 +136,7 @@ module Solver =
   let betterThan (s2 : Solution) (s1 : Solution) =
     s1.HardPenalty < s2.HardPenalty || s1.SearchPenalty < s2.SearchPenalty
 
-  let gamma = 0.04
-
-  let fstun f f0 (*noiseCoefficient*) =
+  let fstun f f0 gamma =
     1.0 - Math.Exp(-gamma * (f - f0)) //+ gamma * Math.Exp(-noiseCoefficient) // * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
 
   open Timetabling.Internal.Specialized
@@ -340,7 +338,7 @@ module Solver =
     let mutable current = initialSolution
     let mutable best = current
     let mutable localPenalty = System.Double.PositiveInfinity
-    let mutable localBan = maxTimeout
+    let mutable localBan = 0
     let mutable assignmentPenalty = dynamicPenalty penalties current
     let mutable currentPenalty = current.SearchPenalty + assignmentPenalty
     let mutable timeout = 0
@@ -358,11 +356,15 @@ module Solver =
     //    fun cls -> (float (s.ClassSoftPenalty(cls))) / worstSoft
     //  )
 
+    let localTimeoutPeriod = 2_000_000
+    let trigCoefficient = 2.0 * Math.PI / float localTimeoutPeriod
+
     let inline randomCoefficient() =
       8.0 + (next random) * 4.0
 
     while not cancellation.IsCancellationRequested do
       //let noiseCoefficient = 8.0 - float (random |> nextN 4)
+      let gamma = 0.05 + 0.05 * (1.0 + Math.Cos(trigCoefficient * float localTimeout))
       if cycle % 50_000ul = 0ul then
         printfn "%A"
           {|
@@ -374,7 +376,8 @@ module Solver =
                         Temperature = t
                         Time = stopwatch.Elapsed.TotalSeconds
                         AssignmentPenalty = assignmentPenalty
-                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty //(randomCoefficient())
+                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty gamma //(randomCoefficient())
+                        Gamma = gamma
                         MaxTimeout = maxTimeout |}
           |}
         if cycle % 2_000_000ul = 0ul then
@@ -411,8 +414,8 @@ module Solver =
         assignmentPenalty <- assignmentPenalty'
       else
         let f0 = best.SearchPenalty
-        let nextSearch = fstun candidatePenalty f0 //(randomCoefficient())
-        let currentSearch = fstun currentPenalty f0 //(randomCoefficient())
+        let nextSearch = fstun candidatePenalty f0 gamma //(randomCoefficient())
+        let currentSearch = fstun currentPenalty f0 gamma //(randomCoefficient())
         if nextSearch < 0.3 && Math.Exp((currentSearch - nextSearch) / t) > next random then
           current <- candidate
           currentPenalty <- candidatePenalty
@@ -462,7 +465,7 @@ module Solver =
             let localBest, localOptimum =
               constraintSearch
                 cancellation
-                (fun s -> fstun s.SearchPenalty bestSearch (*randomCoefficient()*))
+                (fun s -> fstun s.SearchPenalty bestSearch gamma (*randomCoefficient()*))
                 random
                 worstConstraintIds
                 current
@@ -505,14 +508,14 @@ module Solver =
         localBan <- 100_000
         currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
 
-      if current.HardPenalty = 0 && localTimeout > 500_000 then
-        penalties <- scalePenalties penalties current
-        //penalties <- current |> penalize 0.009 (next random) penalties
-        assignmentPenalty <- dynamicPenalty penalties current
-        localPenalty <- Double.PositiveInfinity
+      if localTimeout > localTimeoutPeriod then
         localTimeout <- 0
-        localBan <- 500_000
-        currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
+        if current.HardPenalty = 0 then
+          penalties <- scalePenalties penalties current
+          //penalties <- current |> penalize 0.009 (next random) penalties
+          assignmentPenalty <- dynamicPenalty penalties current
+          localPenalty <- Double.PositiveInfinity
+          currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
 
       if candidate |> betterThan best then
         best <- candidate

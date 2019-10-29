@@ -148,10 +148,10 @@ namespace Timetabling.Internal
 
         public readonly Problem Problem;
 
-        const double HardPenaltyFactor = 0.1d;
+        const double HardPenaltyFactor = 0.05d;
 
         public double SearchPenalty => HardPenalty > 0
-          ? HardPenaltyFactor * HardPenalty + 0.01d * Math.Ceiling(100d * (Problem.ClassOverflowPenalty * ClassOverflows + NormalizedSoftPenalty))
+          ? HardPenaltyFactor * HardPenalty + 0.1d * Math.Ceiling(10d * (Problem.ClassOverflowPenalty * ClassOverflows + NormalizedSoftPenalty))
           : Problem.ClassOverflowPenalty * ClassOverflows + NormalizedSoftPenalty;
 
         internal (int hardPenalty, int softPenalty) CalculatePenalty()
