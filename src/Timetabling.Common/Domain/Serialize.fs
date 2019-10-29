@@ -69,7 +69,7 @@ module Serialize =
 
     element "solution" ([
       attr "name" solution.Name
-      attr "runtime" solution.Runtime
+      attr "runtime" (int solution.Runtime)
       attr "cores" info.Cores
       attr "technique" (sprintf "%s (seed %i)" info.Technique seed)
       attr "author" info.Author
