@@ -515,6 +515,7 @@ module Solver =
           //penalties <- current |> penalize 0.009 (next random) penalties
           assignmentPenalty <- dynamicPenalty penalties current
           localPenalty <- Double.PositiveInfinity
+          localBan <- 200_000
           currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
 
       if candidate |> betterThan best then
