@@ -19,7 +19,7 @@ module Solver =
   let hardPenalizationPressure = 0.0
   let hardPenalizationDecay    = 0.9
 
-  let softPenalizationRate         = 0.99
+  let softPenalizationRate         = 0.9
   let softPenalizationFlat         = 1E-3
   let softPenalizationConflicts    = 1E-3
   let softPenalizationStudentsTime = 1E-3
@@ -136,7 +136,7 @@ module Solver =
   let betterThan (s2 : Solution) (s1 : Solution) =
     s1.HardPenalty < s2.HardPenalty || s1.SearchPenalty < s2.SearchPenalty
 
-  let gamma = 0.4
+  let gamma = 0.3
 
   let fstun f f0 (*noiseCoefficient*) =
     1.0 - Math.Exp(-gamma * (f - f0)) //+ gamma * Math.Exp(-noiseCoefficient) // * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
