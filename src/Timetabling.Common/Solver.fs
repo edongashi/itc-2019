@@ -136,10 +136,10 @@ module Solver =
   let betterThan (s2 : Solution) (s1 : Solution) =
     s1.HardPenalty < s2.HardPenalty || s1.SearchPenalty < s2.SearchPenalty
 
-  let gamma = 0.1
+  let gamma = 0.4
 
-  let fstun f f0 noiseCoefficient =
-    1.0 - Math.Exp(-gamma * (f - f0)) + gamma * Math.Exp(-noiseCoefficient) // * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
+  let fstun f f0 (*noiseCoefficient*) =
+    1.0 - Math.Exp(-gamma * (f - f0)) //+ gamma * Math.Exp(-noiseCoefficient) // * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
 
   open Timetabling.Internal.Specialized
   let constraintSearch
@@ -374,7 +374,7 @@ module Solver =
                         Temperature = t
                         Time = stopwatch.Elapsed.TotalSeconds
                         AssignmentPenalty = assignmentPenalty
-                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty (randomCoefficient())
+                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty //(randomCoefficient())
                         MaxTimeout = maxTimeout |}
           |}
         if cycle % 2_000_000ul = 0ul then
@@ -411,8 +411,8 @@ module Solver =
         assignmentPenalty <- assignmentPenalty'
       else
         let f0 = best.SearchPenalty
-        let nextSearch = fstun candidatePenalty f0 (randomCoefficient())
-        let currentSearch = fstun currentPenalty f0 (randomCoefficient())
+        let nextSearch = fstun candidatePenalty f0 //(randomCoefficient())
+        let currentSearch = fstun currentPenalty f0 //(randomCoefficient())
         if nextSearch < 0.3 && Math.Exp((currentSearch - nextSearch) / t) > next random then
           current <- candidate
           currentPenalty <- candidatePenalty
@@ -462,7 +462,7 @@ module Solver =
             let localBest, localOptimum =
               constraintSearch
                 cancellation
-                (fun s -> fstun s.SearchPenalty bestSearch (randomCoefficient()))
+                (fun s -> fstun s.SearchPenalty bestSearch (*randomCoefficient()*))
                 random
                 worstConstraintIds
                 current
