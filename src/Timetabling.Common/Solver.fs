@@ -10,7 +10,7 @@ open System.Diagnostics
 
 module Solver =
   let temperatureInitial    = 1E-2
-  let temperatureRestart    = 1E-3
+  let temperatureRestart    = 1E-4
   let temperatureChange     = 0.9999995
   let maxTimeout = 1_000_000
 
