@@ -265,4 +265,5 @@ module Solution =
        RoomPenaltyMax = solution.RoomPenaltyMax()
        DistributionPenalty = solution.DistributionPenalty()
        FailedSoftConstraints = solution.FailedSoftConstraints()
-       StudentPenalty = solution.StudentPenalty() |}
+       StudentPenalty = solution.StudentPenalty()
+       Instance = solution.Problem.Name |}
