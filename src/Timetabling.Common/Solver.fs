@@ -12,26 +12,27 @@ module Solver =
   let temperatureInitial    = 1E-3
   let temperatureRestart    = 1E-4
   let temperatureChange     = 0.9999995
-  let maxTimeout = 1_000_000
+  let gammaChange = 0.99
+  let maxTimeout  = 1_000_000
 
   let hardPenalizationFlat     = 0.004
   let hardPenalizationRate     = 1.1
   let hardPenalizationPressure = 0.0
   let hardPenalizationDecay    = 0.9
 
-  let softPenalizationRate         = 0.9
+  let softPenalizationRate         = 1.1
   let softPenalizationFlat         = 1E-3
-  let softPenalizationConflicts    = 1E-3
-  let softPenalizationStudentsTime = 1E-3
-  let softPenalizationStudentsRoom = 1E-4
-  let softPenalizationAssignment   = 1E-3
+  let softPenalizationSpecific     = 0.05
+  let softPenalizationConflicts    = 1E-2
+  let softPenalizationStudentsTime = 1E-2
+  let softPenalizationStudentsRoom = 1E-3
+  let softPenalizationAssignment   = 1E-2
   let softPenalizationDecayFlat    = 1E-3
-  let softPenalizationDecayRate    = 0.5
-
+  let softPenalizationDecayRate    = 0.9
 
   // Lundy and Mees cooling function
-  let beta = 0.038
-  let betaUnfeasible = 4E-3
+  let beta = 3E-3
+  let betaUnfeasible = 3E-3
 
   let penalizeAssignment conflicts penalty =
     penalty * hardPenalizationRate + float conflicts * hardPenalizationFlat
@@ -335,10 +336,12 @@ module Solver =
       y, delta
 
     let maxTimeout = maxTimeout + 300 * problem.Instance.AllClassVariables.Length
+    let localTimeoutPeriod = 3_000_000
+    let trigCoefficient = 2.0 * Math.PI / float localTimeoutPeriod
     let mutable current = initialSolution
     let mutable best = current
     let mutable localPenalty = System.Double.PositiveInfinity
-    let mutable localBan = 0
+    let mutable localBan = localTimeoutPeriod
     let mutable assignmentPenalty = dynamicPenalty penalties current
     let mutable currentPenalty = current.SearchPenalty + assignmentPenalty
     let mutable timeout = 0
@@ -348,6 +351,9 @@ module Solver =
                     else temperatureInitial
     let mutable weights = Array.replicate instance.Constraints.Length 0
     let mutable localTimeout = 0
+    let mutable localTimeoutCount = 0
+    let mutable gammaBase = 0.25
+    let mutable gammaAmplitude = 0.025
     //let mutable focus: int[] = [||]
     //let worstSoft = instance.WorstSoftPenalty
 
@@ -356,15 +362,12 @@ module Solver =
     //    fun cls -> (float (s.ClassSoftPenalty(cls))) / worstSoft
     //  )
 
-    let localTimeoutPeriod = 2_000_000
-    let trigCoefficient = 2.0 * Math.PI / float localTimeoutPeriod
-
     let inline randomCoefficient() =
       8.0 + (next random) * 4.0
 
     while not cancellation.IsCancellationRequested do
       //let noiseCoefficient = 8.0 - float (random |> nextN 4)
-      let gamma = 0.1 + 0.1 * (1.0 + Math.Cos(trigCoefficient * float localTimeout))
+      let gamma = gammaBase + gammaAmplitude * (1.0 + Math.Cos(trigCoefficient * float localTimeout))
       if cycle % 50_000ul = 0ul then
         printfn "%A"
           {|
@@ -372,6 +375,7 @@ module Solver =
             Current = current |> stats
             Search = {| Timeout = timeout
                         LocalTimeout = localTimeout
+                        LocalTimeoutCount = localTimeoutCount
                         LocalPenalty = localPenalty
                         Temperature = t
                         Time = stopwatch.Elapsed.TotalSeconds
@@ -505,21 +509,31 @@ module Solver =
         // penalties <- current |> penalize 0.005 penalties
         assignmentPenalty <- dynamicPenalty penalties current
         localPenalty <- Double.PositiveInfinity
-        localBan <- 100_000
+        localBan <- 500_000
         currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
 
       if localTimeout > localTimeoutPeriod then
         localTimeout <- 0
         if current.HardPenalty = 0 then
+          localTimeoutCount <- localTimeoutCount + 1
+          if localTimeoutCount > 30 then
+            localTimeoutCount <- 0
+            t <- temperatureInitial
+
           penalties <- scalePenalties penalties current
-          //penalties <- current |> penalize 0.009 (next random) penalties
+          //penalties <- current |> penalize softPenalizationSpecific (next random) penalties
           assignmentPenalty <- dynamicPenalty penalties current
           localPenalty <- Double.PositiveInfinity
-          localBan <- 200_000
+          localBan <- 500_000
           currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
+          gammaBase <- gammaBase * gammaChange
+          gammaAmplitude <- gammaAmplitude * gammaChange
 
       if candidate |> betterThan best then
+        if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
+          t <- Math.Max(t, temperatureRestart)
         best <- candidate
+        localTimeoutCount <- 0
 
       cycle <- cycle + 1ul
 
