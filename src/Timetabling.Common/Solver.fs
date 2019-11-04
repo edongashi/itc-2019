@@ -352,7 +352,7 @@ module Solver =
     let mutable weights = Array.replicate instance.Constraints.Length 0
     let mutable localTimeout = 0
     let mutable localTimeoutCount = 0
-    let mutable gammaBase = 0.25
+    let mutable gammaBase = 0.95
     let mutable gammaAmplitude = 0.025
     //let mutable focus: int[] = [||]
     //let worstSoft = instance.WorstSoftPenalty
@@ -516,9 +516,12 @@ module Solver =
         localTimeout <- 0
         if current.HardPenalty = 0 then
           localTimeoutCount <- localTimeoutCount + 1
+          if localTimeoutCount = 5 then
+            gammaBase <- gammaBase * gammaChange
+            gammaAmplitude <- gammaAmplitude * gammaChange
           if localTimeoutCount > 30 then
             localTimeoutCount <- 0
-            t <- temperatureInitial
+            t <- temperatureRestart
 
           penalties <- scalePenalties penalties current
           //penalties <- current |> penalize softPenalizationSpecific (next random) penalties
@@ -526,8 +529,6 @@ module Solver =
           localPenalty <- Double.PositiveInfinity
           localBan <- 500_000
           currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
-          gammaBase <- gammaBase * gammaChange
-          gammaAmplitude <- gammaAmplitude * gammaChange
 
       if candidate |> betterThan best then
         if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
