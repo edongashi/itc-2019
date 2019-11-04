@@ -11,6 +11,7 @@ open System.Diagnostics
 module Solver =
   let temperatureInitial    = 1E-3
   let temperatureRestart    = 1E-4
+  let temperatureReload     = 1E-5
   let temperatureChange     = 0.9999995
   let gammaChange = 0.99
   let maxTimeout  = 1_000_000
@@ -346,8 +347,8 @@ module Solver =
     let mutable currentPenalty = current.SearchPenalty + assignmentPenalty
     let mutable timeout = 0
     let mutable cycle = 0ul
-    let mutable t = if best.HardPenalty < 20
-                    then temperatureRestart
+    let mutable t = if best.HardPenalty = 0 then temperatureReload
+                    else if best.HardPenalty < 20 then temperatureRestart
                     else temperatureInitial
     let mutable weights = Array.replicate instance.Constraints.Length 0
     let mutable localTimeout = 0
