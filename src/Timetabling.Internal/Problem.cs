@@ -199,7 +199,7 @@ namespace Timetabling.Internal
             });
             WorstSoftPenalty =
                 WorstSoftDistributionPenalty + WorstRoomPenalty + WorstTimePenalty + WorstStudentPenalty;
-            ClassOverflowPenalty = 2d * StudentPenalty / WorstSoftPenalty;
+            ClassOverflowPenalty = 2.1d * StudentPenalty / WorstSoftPenalty;
             InitialSolution = CreateInitialSolution();
             //WorstSoftPenalty = InitialSolution.SoftPenalty;
             //ClassOverflowPenalty = 2d * StudentPenalty / WorstSoftPenalty;
