@@ -7,7 +7,7 @@ namespace Timetabling.Internal.Specialized
 {
     public abstract class TimeConstraint : IConstraint
     {
-        private const int CacheCapacity = 4096;
+        private const int CacheCapacity = 1024;
 
         protected readonly int[] Classes;
 

@@ -11,7 +11,7 @@ open System.Diagnostics
 module Solver =
   let temperatureInitial    = 1E-3
   let temperatureRestart    = 1E-4
-  let temperatureReload     = 1E-5
+  let temperatureReload     = 1E-6
   let temperatureChange     = 0.9999995
   let gammaChange = 0.99
   let maxTimeout  = 1_000_000
@@ -32,7 +32,7 @@ module Solver =
   let softPenalizationDecayRate    = 0.9
 
   // Lundy and Mees cooling function
-  let beta = 3E-3
+  let beta = 6E-3
   let betaUnfeasible = 3E-3
 
   let penalizeAssignment conflicts penalty =
