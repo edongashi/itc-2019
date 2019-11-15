@@ -101,6 +101,38 @@ namespace Timetabling.Internal
                 Rooms[i] = roomData;
             }
 
+            ClassData CleanupSingletons(ClassData classData)
+            {
+                if (classData.PossibleRooms.Length == 1)
+                {
+                    var room = Rooms[classData.PossibleRooms[0].Id];
+                    var filtered = classData
+                        .PossibleSchedules
+                        .Where(schedule => !room.UnavailableSchedules.Any(s => s.Overlaps(schedule)))
+                        .ToArray();
+                    if (filtered.Length != classData.PossibleSchedules.Length)
+                    {
+                        Console.WriteLine($"Class {classData.Id} reduced {classData.PossibleSchedules.Length} schedules to {filtered.Length}");
+                    }
+                    return new ClassData(
+                        classData.Id,
+                        classData.ParentId,
+                        classData.CourseId,
+                        classData.Capacity,
+                        classData.PossibleRooms,
+                        filtered,
+                        classData.CommonConstraints,
+                        classData.TimeConstraints,
+                        classData.RoomConstraints,
+                        classData.Children
+                    );
+                }
+
+                return classData;
+            }
+
+            Classes = Classes.Select(CleanupSingletons).ToArray();
+
             var courseStudents = new List<int>[courses.Length];
             foreach (var student in students)
             {
