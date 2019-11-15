@@ -262,8 +262,8 @@ module Convert =
                | None -> s
 
       let schedule = classData.FindSchedule(start, days, weeks)
-      let s'' = s'.WithTime(classId, schedule)
-      s''
+      try s'.WithTime(classId, schedule)
+      with _ -> s'
       //let studentFolder (s : Internal.Solution) student =
       //  try
       //    let studentId = studentId student
