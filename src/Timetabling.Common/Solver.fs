@@ -19,7 +19,7 @@ module Solver =
   let hardPenalizationFlat     = 0.004
   let hardPenalizationRate     = 1.1
   let hardPenalizationPressure = 0.0
-  let hardPenalizationDecay    = 0.99
+  let hardPenalizationDecay    = 0.9
 
   let softPenalizationRate         = 1.1
   let softPenalizationFlat         = 1E-3
