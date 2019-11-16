@@ -10,6 +10,50 @@ namespace Timetabling.Internal
     {
         private const string CorruptInstance = "Corrupt problem instance.";
 
+        private static Class CleanupSingletons(Class cls, Room[] rooms)
+        {
+            if (cls.PossibleRooms.Length == 1)
+            {
+                var room = rooms[cls.PossibleRooms[0].Id];
+                var filtered = cls
+                    .PossibleSchedules
+                    .Where(schedule => !room.UnavailableSchedules.Any(s => s.Overlaps(schedule)))
+                    .ToArray();
+                if (filtered.Length != cls.PossibleSchedules.Length)
+                {
+                    Console.WriteLine($"Class {cls.Id} reduced {cls.PossibleSchedules.Length} schedules to {filtered.Length}");
+                }
+
+                return new Class(
+                    cls.Id,
+                    cls.ParentId,
+                    cls.Capacity,
+                    cls.PossibleRooms,
+                    filtered
+                );
+            }
+
+            return cls;
+        }
+
+        private Course[] Cleanup(IEnumerable<Course> courses, Room[] rooms)
+        {
+            return courses
+                .Select(c => new Course(
+                    c.Id,
+                    c.Configurations
+                        .Select(cfg => new CourseConfiguration(
+                            cfg.Id,
+                            cfg.Subparts
+                                .Select(sub => new Subpart(sub.Id, sub.Classes
+                                    .Select(cls => CleanupSingletons(cls, rooms))
+                                    .ToArray()))
+                                .ToArray()
+                            ))
+                        .ToArray()))
+                .ToArray();
+        }
+
         public Problem(
             string name,
             int numberOfWeeks,
@@ -25,39 +69,12 @@ namespace Timetabling.Internal
             IConstraint[] constraints)
         {
             rooms = rooms.OrderBy(r => r.Id).ToArray();
-            courses = courses.OrderBy(c => c.Id).ToArray();
+            courses = Cleanup(courses.OrderBy(c => c.Id), rooms);
             students = students.OrderBy(s => s.Id).ToArray();
             constraints = constraints.OrderBy(c => c.Id).ToArray();
 
-            Class CleanupSingletons(Class cls)
-            {
-                if (cls.PossibleRooms.Length == 1)
-                {
-                    var room = rooms[cls.PossibleRooms[0].Id];
-                    var filtered = cls
-                        .PossibleSchedules
-                        .Where(schedule => !room.UnavailableSchedules.Any(s => s.Overlaps(schedule)))
-                        .ToArray();
-                    if (filtered.Length != cls.PossibleSchedules.Length)
-                    {
-                        Console.WriteLine($"Class {cls.Id} reduced {cls.PossibleSchedules.Length} schedules to {filtered.Length}");
-                    }
-
-                    return new Class(
-                        cls.Id,
-                        cls.ParentId,
-                        cls.Capacity,
-                        cls.PossibleRooms,
-                        filtered
-                    );
-                }
-
-                return cls;
-            }
-
             var rawClasses = courses
                 .SelectMany(c => c.Classes)
-                .Select(CleanupSingletons)
                 .ToList();
 
             Name = name;
