@@ -29,6 +29,37 @@ namespace Timetabling.Internal
             students = students.OrderBy(s => s.Id).ToArray();
             constraints = constraints.OrderBy(c => c.Id).ToArray();
 
+            Class CleanupSingletons(Class cls)
+            {
+                if (cls.PossibleRooms.Length == 1)
+                {
+                    var room = rooms[cls.PossibleRooms[0].Id];
+                    var filtered = cls
+                        .PossibleSchedules
+                        .Where(schedule => !room.UnavailableSchedules.Any(s => s.Overlaps(schedule)))
+                        .ToArray();
+                    if (filtered.Length != cls.PossibleSchedules.Length)
+                    {
+                        Console.WriteLine($"Class {cls.Id} reduced {cls.PossibleSchedules.Length} schedules to {filtered.Length}");
+                    }
+
+                    return new Class(
+                        cls.Id,
+                        cls.ParentId,
+                        cls.Capacity,
+                        cls.PossibleRooms,
+                        filtered
+                    );
+                }
+
+                return cls;
+            }
+
+            var rawClasses = courses
+                .SelectMany(c => c.Classes)
+                .Select(CleanupSingletons)
+                .ToList();
+
             Name = name;
             NumberOfWeeks = numberOfWeeks;
             DaysPerWeek = daysPerWeek;
@@ -52,7 +83,6 @@ namespace Timetabling.Internal
             HardConstraints = Constraints.Where(c => c.Required).ToArray();
 
             var roomClasses = new List<int>[rooms.Length];
-            var rawClasses = courses.SelectMany(c => c.Classes).ToList();
             Classes = rawClasses
                 .Select(c =>
                 {
@@ -100,38 +130,6 @@ namespace Timetabling.Internal
                     roomClasses[room.Id]?.ToArray() ?? new int[0]);
                 Rooms[i] = roomData;
             }
-
-            ClassData CleanupSingletons(ClassData classData)
-            {
-                if (classData.PossibleRooms.Length == 1)
-                {
-                    var room = Rooms[classData.PossibleRooms[0].Id];
-                    var filtered = classData
-                        .PossibleSchedules
-                        .Where(schedule => !room.UnavailableSchedules.Any(s => s.Overlaps(schedule)))
-                        .ToArray();
-                    if (filtered.Length != classData.PossibleSchedules.Length)
-                    {
-                        Console.WriteLine($"Class {classData.Id} reduced {classData.PossibleSchedules.Length} schedules to {filtered.Length}");
-                    }
-                    return new ClassData(
-                        classData.Id,
-                        classData.ParentId,
-                        classData.CourseId,
-                        classData.Capacity,
-                        classData.PossibleRooms,
-                        filtered,
-                        classData.CommonConstraints,
-                        classData.TimeConstraints,
-                        classData.RoomConstraints,
-                        classData.Children
-                    );
-                }
-
-                return classData;
-            }
-
-            Classes = Classes.Select(CleanupSingletons).ToArray();
 
             var courseStudents = new List<int>[courses.Length];
             foreach (var student in students)
