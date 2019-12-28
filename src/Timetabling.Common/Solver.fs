@@ -139,7 +139,7 @@ module Solver =
     s1.HardPenalty < s2.HardPenalty || s1.SearchPenalty < s2.SearchPenalty
 
   let fstun f f0 gamma =
-    1.0 - Math.Exp(-gamma * (f - f0)) //+ gamma * Math.Exp(-noiseCoefficient) // * 1E-7 //+ gamma / (Math.Pow(10.0, noiseCoefficient))
+    1.0 - Math.Exp(-gamma * (f - f0))
 
   open Timetabling.Internal.Specialized
   let constraintSearch
@@ -311,20 +311,6 @@ module Solver =
           )
       ] |> Array.ofList
 
-    //let mutateWalk (s : Solution) =
-    //  let randomCount = Math.Max(1, (nextN 50 random) - 3) - 1
-    //  let rec walk (best : Solution) (current: Solution) i =
-    //    if i = randomCount then
-    //      best
-    //    else
-    //      let candidate, _ = current |> (nextIndex random infeasibleMutations)
-    //      if candidate.HardPenalty <= best.HardPenalty then
-    //        walk candidate candidate (i + 1)
-    //      else
-    //        walk best candidate (i + 1)
-
-    //  walk s s 0
-
     let mutate (s : Solution) =
       let mutations = if s.HardPenalty = 0 then feasibleMutations else infeasibleMutations
       let randomCount = Math.Max(1, (nextN 7 random) - 3) - 1
@@ -335,6 +321,16 @@ module Solver =
         delta <- delta + d
         y <- y'
       y, delta
+
+    let save solution =
+      printfn "Saving solution . . . "
+      solution
+      |> Solution.serialize
+          SolverInfo.defaults
+          problem
+          seed
+          stopwatch.Elapsed.TotalSeconds
+      |> fun xml -> xml.Save(sprintf "solution_%s_%d.xml" instance.Name seed)
 
     let maxTimeout = maxTimeout + 300 * problem.Instance.AllClassVariables.Length
     let localTimeoutPeriod = 3_000_000
@@ -355,19 +351,8 @@ module Solver =
     let mutable localTimeoutCount = 0
     let mutable gammaBase = 0.95
     let mutable gammaAmplitude = 0.025
-    //let mutable focus: int[] = [||]
-    //let worstSoft = instance.WorstSoftPenalty
-
-    //let inline focusPenalty (s : Solution) =
-    //  focus |> Array.sumBy (
-    //    fun cls -> (float (s.ClassSoftPenalty(cls))) / worstSoft
-    //  )
-
-    let inline randomCoefficient() =
-      8.0 + (next random) * 4.0
 
     while not cancellation.IsCancellationRequested do
-      //let noiseCoefficient = 8.0 - float (random |> nextN 4)
       let gamma = gammaBase + gammaAmplitude * (1.0 + Math.Cos(trigCoefficient * float localTimeout))
       if cycle % 50_000ul = 0ul then
         printfn "%A"
@@ -381,26 +366,18 @@ module Solver =
                         Temperature = t
                         Time = stopwatch.Elapsed.TotalSeconds
                         AssignmentPenalty = assignmentPenalty
-                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty gamma //(randomCoefficient())
+                        FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty gamma
                         Gamma = gamma
                         MaxTimeout = maxTimeout |}
           |}
-        if cycle % 2_000_000ul = 0ul then
-          printfn "Saving backup..."
-          best
-          |> Solution.serialize
-              SolverInfo.defaults
-              problem
-              seed
-              stopwatch.Elapsed.TotalSeconds
-          |> fun xml -> xml.Save(sprintf "solution_%s_%d.xml" instance.Name seed)
+        if cycle > 0ul && cycle % 2_000_000ul = 0ul then
+          save best
 
       let candidate, delta = mutate current
       let assignmentPenalty' = assignmentPenalty + delta |> min0
       let candidatePenalty =
         candidate.SearchPenalty
         + assignmentPenalty'
-        //+ (focusPenalty current)
 
       if localBan > 0 then
         localBan <- localBan - 1
@@ -419,8 +396,8 @@ module Solver =
         assignmentPenalty <- assignmentPenalty'
       else
         let f0 = best.SearchPenalty
-        let nextSearch = fstun candidatePenalty f0 gamma //(randomCoefficient())
-        let currentSearch = fstun currentPenalty f0 gamma //(randomCoefficient())
+        let nextSearch = fstun candidatePenalty f0 gamma
+        let currentSearch = fstun currentPenalty f0 gamma
         if nextSearch < 0.3 && Math.Exp((currentSearch - nextSearch) / t) > next random then
           current <- candidate
           currentPenalty <- candidatePenalty
@@ -430,12 +407,8 @@ module Solver =
       localTimeout <- localTimeout + 1
       if current.HardPenalty = 0 then
         t <- t / (1.0 + beta * t)
-      else 
+      else
         t <- t / (1.0 + betaUnfeasible * t)
-      //if current.HardPenalty = 0 || candidatePenalty < currentPenalty then
-      //  t <- t * temperatureChange
-      //else
-      //  t <- t * temperatureChangeSlow
 
       if candidate.HardPenalty < best.HardPenalty
          || candidate.HardPenalty = 0
@@ -470,7 +443,7 @@ module Solver =
             let localBest, localOptimum =
               constraintSearch
                 cancellation
-                (fun s -> fstun s.SearchPenalty bestSearch gamma (*randomCoefficient()*))
+                (fun s -> fstun s.SearchPenalty bestSearch gamma)
                 random
                 worstConstraintIds
                 current
@@ -484,34 +457,11 @@ module Solver =
             penalties <- scalePenalties penalties current
         else
           penalties <- scalePenalties penalties current
-          //let worstClasses = classPenaltiesSoft current
-          //let len = List.length worstClasses
-          //focus <-
-          //  List.replicate (len / 10 |> int) 0
-          //  |> List.map (fun _ -> Math.Min(random |> nextN len, random |> nextN len))
-          //  |> List.map (fun id -> worstClasses |> List.item id |> variableClass)
-          //  |> (fun l ->
-          //        if len > 0
-          //        then
-          //          [
-          //            worstClasses
-          //            |> List.item (random |> nextN (Math.Min(3, len)))
-          //            |> variableClass
-          //          ] @ l
-          //        else l
-          //     )
-          //  |> List.distinct
-          //  |> Array.ofList
 
-          //if current.HardPenalty = 0 then
-          //  penalties <- current |> penalize 0.05 (next random) penalties
-
-        // penalties <- scalePenalties penalties current
-        // penalties <- current |> penalize 0.005 penalties
         assignmentPenalty <- dynamicPenalty penalties current
         localPenalty <- Double.PositiveInfinity
         localBan <- 500_000
-        currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
+        currentPenalty <- current.SearchPenalty + assignmentPenalty
 
       if localTimeout > localTimeoutPeriod then
         localTimeout <- 0
@@ -525,11 +475,10 @@ module Solver =
             t <- temperatureRestart
 
           penalties <- scalePenalties penalties current
-          //penalties <- current |> penalize softPenalizationSpecific (next random) penalties
           assignmentPenalty <- dynamicPenalty penalties current
           localPenalty <- Double.PositiveInfinity
           localBan <- 500_000
-          currentPenalty <- current.SearchPenalty + assignmentPenalty // + (focusPenalty current)
+          currentPenalty <- current.SearchPenalty + assignmentPenalty
 
       if candidate |> betterThan best then
         if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
@@ -539,4 +488,5 @@ module Solver =
 
       cycle <- cycle + 1ul
 
+    save best
     best, stopwatch.Elapsed.TotalSeconds

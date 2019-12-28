@@ -18,10 +18,17 @@ type Argument =
 
 let initialize solutionGetter seed (p : ProblemModel) =
   let cancellation = new System.Threading.CancellationTokenSource()
+
+  System.Console.CancelKeyPress.Add(
+    fun e ->
+      e.Cancel <- true
+      printfn "\nStopping solver . . . "
+      cancellation.Cancel()
+  )
+
   p
   |> Problem.wrap
   |> fun p -> Solver.solve seed cancellation.Token p (p |> solutionGetter)
-  |> printfn "%A"
 
 let run (args : ParseResults<Argument>) =
   let problemPath = args.GetResult(Instance)
@@ -42,7 +49,6 @@ let run (args : ParseResults<Argument>) =
       try
         problem |> initialize getInitialSolution seed |> ignore
       with ex -> printfn "%s\n%s" ex.Message ex.StackTrace
-      printfn "Parsed successfully"
   | Error error -> printfn "Error %A" error
   ()
 
