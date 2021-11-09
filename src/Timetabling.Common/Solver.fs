@@ -352,9 +352,33 @@ module Solver =
     let mutable gammaBase = 0.95
     let mutable gammaAmplitude = 0.025
 
+    use csv = System.IO.File.AppendText(sprintf "trace_%s_%d.csv" instance.Name seed)
+
+    let write (str: string) =
+      csv.WriteLine(str)
+
+    let flush () =
+      csv.Flush()
+
+    let writeStats() =
+      sprintf "%f,%i,%i,%i,%i" (float stopwatch.ElapsedMilliseconds / 1000.0) best.HardPenalty best.SoftPenalty current.HardPenalty current.SoftPenalty
+      |> write
+
+    write "t,best_hard,best_soft,curr_hard,curr_soft"
+    writeStats()
+
+    let mutable lastTick = stopwatch.ElapsedMilliseconds
+
     while not cancellation.IsCancellationRequested do
+      let elapsed = stopwatch.ElapsedMilliseconds
+      if elapsed - lastTick >= 1000L then
+        writeStats()
+        lastTick <- elapsed
+
+      //let noiseCoefficient = 8.0 - float (random |> nextN 4)
       let gamma = gammaBase + gammaAmplitude * (1.0 + Math.Cos(trigCoefficient * float localTimeout))
       if cycle % 50_000ul = 0ul then
+        flush()
         printfn "%A"
           {|
             Best = best |> stats
@@ -489,4 +513,5 @@ module Solver =
       cycle <- cycle + 1ul
 
     save best
+    flush()
     best, stopwatch.Elapsed.TotalSeconds

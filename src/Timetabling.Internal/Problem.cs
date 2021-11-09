@@ -246,7 +246,15 @@ namespace Timetabling.Internal
             });
             WorstSoftPenalty =
                 WorstSoftDistributionPenalty + WorstRoomPenalty + WorstTimePenalty + WorstStudentPenalty;
-            ClassOverflowPenalty = 3.1d * StudentPenalty / WorstSoftPenalty;
+
+            var overflowFactor = 2.01d;
+            if (Students.Length > 0)
+            {
+                overflowFactor *= Students.Max(s => s.Courses.Sum(c => Courses[c].MaxClasses()));
+            }
+
+            ClassOverflowPenalty = overflowFactor * StudentPenalty / WorstSoftPenalty;
+
             InitialSolution = CreateInitialSolution();
             //WorstSoftPenalty = InitialSolution.SoftPenalty;
             //ClassOverflowPenalty = 2d * StudentPenalty / WorstSoftPenalty;
