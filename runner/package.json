@@ -1,0 +1,17 @@
+{
+  "name": "runner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "enquirer": "^2.3.6",
+    "glob": "^7.2.0",
+    "lodash": "^4.17.21",
+    "ora": "^5.4.1"
+  }
+}
