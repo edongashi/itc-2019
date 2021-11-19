@@ -397,7 +397,7 @@ module Solver =
                 fun candidate current -> candidate < current
 
         IO.File.WriteAllText(
-            $"config_{friendlyName}_{seed}.cfg",
+            $"{friendlyName}_{seed}_config.cfg",
             Config.Serialize()
         )
 
@@ -407,10 +407,10 @@ module Solver =
 
             solution
             |> Solution.serialize SolverInfo.defaults problem seed stopwatch.Elapsed.TotalSeconds
-            |> fun xml -> xml.Save($"solution_{friendlyName}_{seed}.xml")
+            |> fun xml -> xml.Save($"{friendlyName}_{seed}_solution.xml")
 
             IO.File.WriteAllText(
-                $"best_{friendlyName}_{seed}.txt",
+                $"{friendlyName}_{seed}_best.txt",
                 $"Hard: {solution.HardPenalty}, Soft: {solution.SoftPenalty}"
             )
 
@@ -449,7 +449,7 @@ module Solver =
         // let mutable gammaAmplitude = 0.025
 
         use csv =
-            System.IO.File.AppendText($"trace_{friendlyName}_{seed}.csv")
+            System.IO.File.AppendText($"{friendlyName}_{seed}_trace.csv")
 
         let write (str: string) = csv.WriteLine(str)
 
