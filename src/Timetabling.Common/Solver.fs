@@ -9,6 +9,8 @@ open Timetabling.Common.Domain
 open System.Diagnostics
 
 module Solver =
+    let mutable quiet = false
+
     let penalizeAssignment conflicts penalty =
         penalty * Config.HardPenalizationRate
         + float conflicts * Config.HardPenalizationFlat
@@ -274,12 +276,13 @@ module Solver =
 
             walk s sPenalty s 0
 
-        printfn "Entering constraint search..."
+        if not quiet then
+            printfn "Entering constraint search..."
 
         while (softSearch || best.HardPenalty > 0)
               && timeout < Config.FocusedSearchTimeoutMax
               && not cancellation.IsCancellationRequested do
-            if cycle % 4_000ul = 0ul then
+            if cycle % 4_000ul = 0ul && not quiet then
                 printfn
                     "%A"
                     {| Best = best |> stats
@@ -312,7 +315,9 @@ module Solver =
             t <- t * Config.FocusedSearchTemperatureChange
             timeout <- timeout + 1
 
-        printfn "Exiting constraint search..."
+        if not quiet then
+            printfn "Exiting constraint search..."
+
         best, current
 
     let solve (friendlyName: string) seed (cancellation: CancellationToken) (problem: Problem) initialSolution =
@@ -392,7 +397,8 @@ module Solver =
                 fun candidate current -> candidate < current
 
         let save solution =
-            printfn "Saving solution . . . "
+            if not quiet then
+                printfn "Saving solution . . . "
 
             solution
             |> Solution.serialize SolverInfo.defaults problem seed stopwatch.Elapsed.TotalSeconds
@@ -476,20 +482,21 @@ module Solver =
             if cycle % 50_000ul = 0ul then
                 flush ()
 
-                printfn
-                    "%A"
-                    {| Best = best |> stats
-                       Current = current |> stats
-                       Search =
-                        {| Timeout = timeout
-                           LocalTimeout = localTimeout
-                           LocalTimeoutCount = localTimeoutCount
-                           LocalPenalty = localPenalty
-                           Temperature = t
-                           Time = stopwatch.Elapsed.TotalSeconds
-                           AssignmentPenalty = assignmentPenalty
-                           FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty
-                           MaxTimeout = maxTimeout |} |}
+                if not quiet then
+                    printfn
+                        "%A"
+                        {| Best = best |> stats
+                           Current = current |> stats
+                           Search =
+                            {| Timeout = timeout
+                               LocalTimeout = localTimeout
+                               LocalTimeoutCount = localTimeoutCount
+                               LocalPenalty = localPenalty
+                               Temperature = t
+                               Time = stopwatch.Elapsed.TotalSeconds
+                               AssignmentPenalty = assignmentPenalty
+                               FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty
+                               MaxTimeout = maxTimeout |} |}
 
                 if cycle > 0ul && cycle % 2_000_000ul = 0ul then
                     save best

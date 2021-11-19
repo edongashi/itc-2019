@@ -13,6 +13,7 @@ type Argument =
     | Name of string
     | Config of path: string
     | Timeout of seconds: int
+    | Quiet
     interface IArgParserTemplate with
         member this.Usage: string =
             match this with
@@ -22,6 +23,7 @@ type Argument =
             | Name _ -> "Printed name for instance."
             | Config _ -> "Custom config path."
             | Timeout _ -> "Solver duration."
+            | Quiet -> "Prevent printing periodic data."
 
 let initialize duration solutionGetter friendlyName seed (p: ProblemModel) =
     let cancellation =
@@ -47,6 +49,9 @@ let run (args: ParseResults<Argument>) =
     let duration =
         args.TryGetResult(Timeout)
         |> Option.defaultValue 0
+
+    if args.TryGetResult(Quiet) |> Option.isSome then
+        Solver.quiet <- true
 
     let problemPath = args.GetResult(Instance)
     let solutionPath = args.TryGetResult(Solution)
