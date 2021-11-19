@@ -1,4 +1,4 @@
-open Argu
+﻿open Argu
 open System.Xml.Linq
 open Timetabling.Common
 open Timetabling.Common.Domain
@@ -10,6 +10,7 @@ type Argument =
     | [<ExactlyOnce>] Instance of path: string
     | Solution of path: string
     | Seed of seed: int
+    | Name of string
     | Config of path: string
     | Timeout of seconds: int
     interface IArgParserTemplate with
@@ -18,10 +19,11 @@ type Argument =
             | Instance _ -> "XML problem path."
             | Solution _ -> "Solution path."
             | Seed _ -> "Seed number."
+            | Name _ -> "Printed name for instance."
             | Config _ -> "Custom config path."
             | Timeout _ -> "Solver duration."
 
-let initialize duration solutionGetter seed (p: ProblemModel) =
+let initialize duration solutionGetter friendlyName seed (p: ProblemModel) =
     let cancellation =
         new System.Threading.CancellationTokenSource()
 
@@ -35,7 +37,7 @@ let initialize duration solutionGetter seed (p: ProblemModel) =
 
     p
     |> Problem.wrap
-    |> fun p -> Solver.solve seed cancellation.Token p (p |> solutionGetter)
+    |> fun p -> Solver.solve friendlyName seed cancellation.Token p (p |> solutionGetter)
 
 let run (args: ParseResults<Argument>) =
     match args.TryGetResult(Config) with
@@ -66,8 +68,12 @@ let run (args: ParseResults<Argument>) =
     match problem with
     | Ok problem ->
         try
+            let friendlyName =
+                args.TryGetResult(Name)
+                |> Option.defaultValue problem.Name
+
             problem
-            |> initialize duration getInitialSolution seed
+            |> initialize duration getInitialSolution friendlyName seed
             |> ignore
         with
         | ex -> printfn "%s\n%s" ex.Message ex.StackTrace

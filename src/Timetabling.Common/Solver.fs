@@ -315,7 +315,7 @@ module Solver =
         printfn "Exiting constraint search..."
         best, current
 
-    let solve seed (cancellation: CancellationToken) (problem: Problem) initialSolution =
+    let solve (friendlyName: string) seed (cancellation: CancellationToken) (problem: Problem) initialSolution =
         let stopwatch = Stopwatch.StartNew()
 
         let instance = problem.Instance
@@ -396,7 +396,12 @@ module Solver =
 
             solution
             |> Solution.serialize SolverInfo.defaults problem seed stopwatch.Elapsed.TotalSeconds
-            |> fun xml -> xml.Save(sprintf "solution_%s_%d.xml" instance.Name seed)
+            |> fun xml -> xml.Save($"solution_{friendlyName}_{seed}.xml")
+
+            IO.File.WriteAllText(
+                $"best_{friendlyName}_{seed}.txt",
+                $"Hard: {solution.HardPenalty}, Soft: {solution.SoftPenalty}"
+            )
 
         let maxTimeout =
             Config.MaxTimeout
@@ -433,7 +438,7 @@ module Solver =
         // let mutable gammaAmplitude = 0.025
 
         use csv =
-            System.IO.File.AppendText(sprintf "trace_%s_%d.csv" instance.Name seed)
+            System.IO.File.AppendText($"trace_{friendlyName}_{seed}.csv")
 
         let write (str: string) = csv.WriteLine(str)
 
