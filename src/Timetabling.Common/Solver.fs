@@ -9,35 +9,9 @@ open Timetabling.Common.Domain
 open System.Diagnostics
 
 module Solver =
-    let temperatureInitial = 1E-3
-    let temperatureRestart = 1E-4
-    let temperatureReload = 1E-6
-    let temperatureChange = 0.9999995
-    let gammaChange = 0.99
-    let maxTimeout = 1_000_000
-
-    let hardPenalizationFlat = 0.004
-    let hardPenalizationRate = 1.1
-    let hardPenalizationPressure = 0.0
-    let hardPenalizationDecay = 0.9
-
-    let softPenalizationRate = 1.1
-    let softPenalizationFlat = 1E-3
-    let softPenalizationSpecific = 0.05
-    let softPenalizationConflicts = 1E-2
-    let softPenalizationStudentsTime = 1E-2
-    let softPenalizationStudentsRoom = 1E-3
-    let softPenalizationAssignment = 1E-2
-    let softPenalizationDecayFlat = 1E-3
-    let softPenalizationDecayRate = 0.9
-
-    // Lundy and Mees cooling function
-    let beta = 6E-3
-    let betaUnfeasible = 3E-3
-
     let penalizeAssignment conflicts penalty =
-        penalty * hardPenalizationRate
-        + float conflicts * hardPenalizationFlat
+        penalty * Config.HardPenalizationRate
+        + float conflicts * Config.HardPenalizationFlat
 
     let pressureTimeAssignment
         divisor
@@ -47,16 +21,16 @@ module Solver =
         assignmentPenalty
         penalty
         =
-        penalty * softPenalizationRate
-        + (softPenalizationFlat
+        penalty * Config.SoftPenalizationRate
+        + (Config.SoftPenalizationFlat
            + float conflicts
-             * softPenalizationConflicts
+             * Config.SoftPenalizationConflicts
              * float optimization.Distribution
            + float studentConflicts
-             * softPenalizationStudentsTime
+             * Config.SoftPenalizationStudentsTime
              * float optimization.Student
            + float assignmentPenalty
-             * softPenalizationAssignment
+             * Config.SoftPenalizationAssignment
              * float optimization.Time)
           / divisor
 
@@ -68,24 +42,24 @@ module Solver =
         assignmentPenalty
         penalty
         =
-        penalty * softPenalizationRate
-        + (softPenalizationFlat
+        penalty * Config.SoftPenalizationRate
+        + (Config.SoftPenalizationFlat
            + float conflicts
-             * softPenalizationConflicts
+             * Config.SoftPenalizationConflicts
              * float optimization.Distribution
            + float studentConflicts
-             * softPenalizationStudentsRoom
+             * Config.SoftPenalizationStudentsRoom
              * float optimization.Student
            + float assignmentPenalty
-             * softPenalizationAssignment
+             * Config.SoftPenalizationAssignment
              * float optimization.Room)
           / divisor
 
-    let decayAssignmentHard penalty = penalty * hardPenalizationDecay
+    let decayAssignmentHard penalty = penalty * Config.HardPenalizationDecay
 
     let decayAssignmentSoft penalty =
-        penalty * softPenalizationDecayRate
-        - softPenalizationDecayFlat
+        penalty * Config.SoftPenalizationDecayRate
+        - Config.SoftPenalizationDecayFlat
         |> min0
 
     let scaleClassPenalties (candidate: Solution) =
@@ -160,7 +134,7 @@ module Solver =
                                     timeAssignmentPenalty
                                     p
                             else
-                                p + hardPenalizationPressure
+                                p + Config.HardPenalizationPressure
                         else if feasible then
                             decayAssignmentSoft p
                         else
@@ -180,7 +154,7 @@ module Solver =
                                     roomAssignmentPenalty
                                     p
                             else
-                                p + hardPenalizationPressure
+                                p + Config.HardPenalizationPressure
                         else if feasible then
                             decayAssignmentSoft p
                         else
@@ -194,7 +168,8 @@ module Solver =
         s1.HardPenalty < s2.HardPenalty
         || s1.SearchPenalty < s2.SearchPenalty
 
-    let fstun f f0 gamma = 1.0 - Math.Exp(-gamma * (f - f0))
+    let fstun f f0 =
+        1.0 - Math.Exp(-Config.FStunGamma * (f - f0))
 
     open Timetabling.Internal.Specialized
 
@@ -206,10 +181,6 @@ module Solver =
         (solution: Solution)
         softSearch
         =
-        let t0 = 1E-2
-        let tDelta = 0.99999
-        let timeoutMax = 500_000
-
         let satisfiesType (constraintType: ConstraintType) (variableType: VariableType) =
             constraintType = ConstraintType.Common
             || (variableType = VariableType.Room
@@ -274,7 +245,7 @@ module Solver =
         let mutable best = solution
         let mutable current = best
         let mutable currentPenalty = evaluate current
-        let mutable t = t0
+        let mutable t = Config.FocusedSearchTemperatureInitial
         let mutable timeout = 0
         let mutable cycle = 0ul
 
@@ -306,7 +277,7 @@ module Solver =
         printfn "Entering constraint search..."
 
         while (softSearch || best.HardPenalty > 0)
-              && timeout < timeoutMax
+              && timeout < Config.FocusedSearchTimeoutMax
               && not cancellation.IsCancellationRequested do
             if cycle % 4_000ul = 0ul then
                 printfn
@@ -319,7 +290,7 @@ module Solver =
                            CurrentPenalty = currentPenalty
                            FStun = fstun current
                            Constraints = constraintIds |> List.ofSeq
-                           MaxTimeout = timeoutMax |} |}
+                           MaxTimeout = Config.FocusedSearchTimeoutMax |} |}
 
             cycle <- cycle + 1ul
             let candidate, candidatePenalty = mutate current currentPenalty
@@ -338,7 +309,7 @@ module Solver =
                 current <- candidate
                 currentPenalty <- candidatePenalty
 
-            t <- t * tDelta
+            t <- t * Config.FocusedSearchTemperatureChange
             timeout <- timeout + 1
 
         printfn "Exiting constraint search..."
@@ -353,32 +324,47 @@ module Solver =
         let initialPenalties = ClassPenalties.defaults problem
         let mutable penalties = initialPenalties
 
+        let timeMutation =
+            fun s -> Mutate.time penalties (next random) (next random) s
+
+        let roomMutation =
+            fun s -> Mutate.room penalties (next random) (next random) s
+
+        let variableMutation =
+            fun s -> Mutate.variable penalties (next random) (next random) s
+
+        let enrollmentMutation =
+            fun s -> Mutate.enrollment (next random) (next random) s
+
+        let doubleEnrollmentMutation =
+            fun s ->
+                s
+                |> Mutate.enrollmentNonPenalized (next random) (next random)
+                |> Mutate.enrollmentNonPenalized (next random) (next random),
+                0.0
+
+        let replicate mutation times = List.replicate times mutation
+
         let infeasibleMutations =
-            [ if instance.TimeVariables.Length > 0 then
-                  yield (fun s -> Mutate.time penalties (next random) (next random) s)
-                  yield (fun s -> Mutate.variable penalties (next random) (next random) s)
+            [ yield! replicate variableMutation Config.InfeasibleVariableMutationOccurrences
+              if instance.TimeVariables.Length > 0 then
+                  yield! replicate timeMutation Config.InfeasibleTimeMutationOccurrences
               if instance.RoomVariables.Length > 0 then
-                  yield (fun s -> Mutate.room penalties (next random) (next random) s)
-                  yield (fun s -> Mutate.variable penalties (next random) (next random) s) ]
+                  yield! replicate roomMutation Config.InfeasibleRoomMutationOccurrences
+              if instance.StudentVariables.Length > 0 then
+                  yield! replicate enrollmentMutation Config.InfeasibleEnrollmentMutationOccurrences
+                  yield! replicate doubleEnrollmentMutation Config.InfeasibleDoubleEnrollmentMutationOccurrences ]
             |> Array.ofList
 
         let feasibleMutations =
-            [ if instance.TimeVariables.Length > 0 then
-                  yield (fun s -> Mutate.time penalties (next random) (next random) s)
-                  yield (fun s -> Mutate.variable penalties (next random) (next random) s)
+            [ yield! replicate variableMutation Config.FeasibleVariableMutationOccurrences
+              if instance.TimeVariables.Length > 0 then
+                  yield! replicate timeMutation Config.FeasibleTimeMutationOccurrences
               if instance.RoomVariables.Length > 0 then
-                  yield (fun s -> Mutate.room penalties (next random) (next random) s)
-                  yield (fun s -> Mutate.variable penalties (next random) (next random) s)
+                  yield! replicate roomMutation Config.FeasibleRoomMutationOccurrences
               if instance.StudentVariables.Length > 0 then
-                  yield (fun s -> Mutate.enrollment (next random) (next random) s)
-                  yield (fun s -> Mutate.enrollment (next random) (next random) s)
-
-                  yield
-                      (fun s ->
-                          s
-                          |> Mutate.enrollmentNonPenalized (next random) (next random)
-                          |> Mutate.enrollmentNonPenalized (next random) (next random),
-                          0.0) ]
+                  yield! replicate enrollmentMutation Config.FeasibleEnrollmentMutationOccurrences
+                  yield! replicate doubleEnrollmentMutation Config.FeasibleDoubleEnrollmentMutationOccurrences ]
             |> Array.ofList
 
         let mutate (s: Solution) =
@@ -399,6 +385,12 @@ module Solver =
 
             y, delta
 
+        let cmp =
+            if Config.RollingEffect then
+                fun candidate current -> candidate <= current
+            else
+                fun candidate current -> candidate < current
+
         let save solution =
             printfn "Saving solution . . . "
 
@@ -407,15 +399,15 @@ module Solver =
             |> fun xml -> xml.Save(sprintf "solution_%s_%d.xml" instance.Name seed)
 
         let maxTimeout =
-            maxTimeout
-            + 300 * problem.Instance.AllClassVariables.Length
+            Config.MaxTimeout
+            + Config.ExtraTimeoutPerClassVariable
+              * problem.Instance.AllClassVariables.Length
 
-        let localTimeoutPeriod = 3_000_000
-        let trigCoefficient = 2.0 * Math.PI / float localTimeoutPeriod
+        // let trigCoefficient = 2.0 * Math.PI / float localTimeoutPeriod
         let mutable current = initialSolution
         let mutable best = current
         let mutable localPenalty = System.Double.PositiveInfinity
-        let mutable localBan = localTimeoutPeriod
+        let mutable localBan = Config.MaxLocalTimeout
         let mutable assignmentPenalty = dynamicPenalty penalties current
 
         let mutable currentPenalty =
@@ -426,19 +418,19 @@ module Solver =
 
         let mutable t =
             if best.HardPenalty = 0 then
-                temperatureReload
+                Config.TemperatureReload
             else if best.HardPenalty < 20 then
-                temperatureRestart
+                Config.TemperatureRestart
             else
-                temperatureInitial
+                Config.TemperatureInitial
 
         let mutable weights =
             Array.replicate instance.Constraints.Length 0
 
         let mutable localTimeout = 0
         let mutable localTimeoutCount = 0
-        let mutable gammaBase = 0.95
-        let mutable gammaAmplitude = 0.025
+        // let mutable gammaBase = 0.95
+        // let mutable gammaAmplitude = 0.025
 
         use csv =
             System.IO.File.AppendText(sprintf "trace_%s_%d.csv" instance.Name seed)
@@ -470,11 +462,11 @@ module Solver =
                 lastTick <- elapsed
 
             //let noiseCoefficient = 8.0 - float (random |> nextN 4)
-            let gamma =
-                gammaBase
-                + gammaAmplitude
-                  * (1.0
-                     + Math.Cos(trigCoefficient * float localTimeout))
+            // let gamma =
+            //     gammaBase
+            //     + gammaAmplitude
+            //       * (1.0
+            //          + Math.Cos(trigCoefficient * float localTimeout))
 
             if cycle % 50_000ul = 0ul then
                 flush ()
@@ -491,8 +483,7 @@ module Solver =
                            Temperature = t
                            Time = stopwatch.Elapsed.TotalSeconds
                            AssignmentPenalty = assignmentPenalty
-                           FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty gamma
-                           Gamma = gamma
+                           FStun = fstun (current.SearchPenalty + assignmentPenalty) best.SearchPenalty
                            MaxTimeout = maxTimeout |} |}
 
                 if cycle > 0ul && cycle % 2_000_000ul = 0ul then
@@ -514,7 +505,7 @@ module Solver =
                 if localBan = 0 then
                     localPenalty <- candidatePenalty
 
-            if candidatePenalty <= currentPenalty then
+            if cmp candidatePenalty currentPenalty then
                 if candidatePenalty < currentPenalty then
                     timeout <- 0
 
@@ -523,8 +514,10 @@ module Solver =
                 assignmentPenalty <- assignmentPenalty'
             else
                 let f0 = best.SearchPenalty
-                let nextSearch = fstun candidatePenalty f0 gamma
-                let currentSearch = fstun currentPenalty f0 gamma
+
+                let nextSearch = fstun candidatePenalty f0
+
+                let currentSearch = fstun currentPenalty f0
 
                 if nextSearch < 0.3
                    && Math.Exp((currentSearch - nextSearch) / t) > next random then
@@ -536,9 +529,9 @@ module Solver =
             localTimeout <- localTimeout + 1
 
             if current.HardPenalty = 0 then
-                t <- t / (1.0 + beta * t)
+                t <- t / (1.0 + Config.TemperatureBeta * t)
             else
-                t <- t / (1.0 + betaUnfeasible * t)
+                t <- t / (1.0 + Config.TemperatureBetaUnfeasible * t)
 
             if candidate.HardPenalty < best.HardPenalty
                || candidate.HardPenalty = 0
@@ -553,15 +546,16 @@ module Solver =
                 currentPenalty <- current.SearchPenalty
             else if timeout > maxTimeout then
                 timeout <- 0
-                t <- temperatureRestart
+                t <- Config.TemperatureRestart
 
-                if current.HardPenalty > 0 then
+                if Config.FocusedSearchEnabled
+                   && current.HardPenalty > 0 then
                     weights <- incrementWeights weights current
 
                     let worstConstraints =
                         worstHardConstraints weights current
-                        |> List.truncate 3
-                        |> List.filter (fun (_, _, weight, _) -> weight > 3)
+                        |> List.truncate Config.FocusedSearchMaxConstraints
+                        |> List.filter (fun (_, _, weight, _) -> weight >= Config.FocusedSearchMinWeight)
 
                     let worstConstraintIds =
                         worstConstraints
@@ -581,7 +575,7 @@ module Solver =
                         let localBest, localOptimum =
                             constraintSearch
                                 cancellation
-                                (fun s -> fstun s.SearchPenalty bestSearch gamma)
+                                (fun s -> fstun s.SearchPenalty bestSearch)
                                 random
                                 worstConstraintIds
                                 current
@@ -599,32 +593,32 @@ module Solver =
 
                 assignmentPenalty <- dynamicPenalty penalties current
                 localPenalty <- Double.PositiveInfinity
-                localBan <- 500_000
+                localBan <- Config.LocalBanAfterTimeout
                 currentPenalty <- current.SearchPenalty + assignmentPenalty
 
-            if localTimeout > localTimeoutPeriod then
+            if localTimeout > Config.MaxLocalTimeout then
                 localTimeout <- 0
 
                 if current.HardPenalty = 0 then
                     localTimeoutCount <- localTimeoutCount + 1
 
-                    if localTimeoutCount = 5 then
-                        gammaBase <- gammaBase * gammaChange
-                        gammaAmplitude <- gammaAmplitude * gammaChange
+                    // if localTimeoutCount = 5 then
+                    //     gammaBase <- gammaBase * gammaChange
+                    //     gammaAmplitude <- gammaAmplitude * gammaChange
 
                     if localTimeoutCount > 30 then
                         localTimeoutCount <- 0
-                        t <- temperatureRestart
+                        t <- Config.TemperatureRestart
 
                     penalties <- scalePenalties penalties current
                     assignmentPenalty <- dynamicPenalty penalties current
                     localPenalty <- Double.PositiveInfinity
-                    localBan <- 500_000
+                    localBan <- Config.LocalBanAfterTimeout
                     currentPenalty <- current.SearchPenalty + assignmentPenalty
 
             if candidate |> betterThan best then
                 if candidate.HardPenalty = 0 && best.HardPenalty > 0 then
-                    t <- Math.Max(t, temperatureRestart)
+                    t <- Math.Max(t, Config.TemperatureRestart)
 
                 best <- candidate
                 localTimeoutCount <- 0
