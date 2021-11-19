@@ -396,10 +396,7 @@ module Solver =
             else
                 fun candidate current -> candidate < current
 
-        IO.File.WriteAllText(
-            $"{friendlyName}_{seed}_config.cfg",
-            Config.Serialize()
-        )
+        IO.File.WriteAllText($"{friendlyName}_{seed}_config.cfg", Config.Serialize())
 
         let save solution =
             if not quiet then
@@ -411,7 +408,7 @@ module Solver =
 
             IO.File.WriteAllText(
                 $"{friendlyName}_{seed}_best.txt",
-                $"Hard: {solution.HardPenalty}, Soft: {solution.SoftPenalty}"
+                $"Time: {float stopwatch.ElapsedMilliseconds / 1000.0}s\nHard: {solution.HardPenalty}\nSoft: {solution.SoftPenalty}"
             )
 
         let maxTimeout =
