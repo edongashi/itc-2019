@@ -396,6 +396,11 @@ module Solver =
             else
                 fun candidate current -> candidate < current
 
+        IO.File.WriteAllText(
+            $"config_{friendlyName}_{seed}.cfg",
+            Config.Serialize()
+        )
+
         let save solution =
             if not quiet then
                 printfn "Saving solution . . . "
