@@ -11,8 +11,8 @@ const execFileAsync = util.promisify(execFile)
 
 const exePaths = {
   win32: path.join(__dirname, '..', 'bin', 'win-x64', 'Timetabling.CLI.exe'),
-  darwin: path.join(__dirname, '..', 'bin', 'linux-x64', 'Timetabling.CLI'),
-  linux: path.join(__dirname, '..', 'bin', 'osx-x64', 'Timetabling.CLI')
+  darwin: path.join(__dirname, '..', 'bin', 'osx-x64', 'Timetabling.CLI'),
+  linux: path.join(__dirname, '..', 'bin', 'linux-x64', 'Timetabling.CLI')
 }
 
 const exePath = exePaths[process.platform]
